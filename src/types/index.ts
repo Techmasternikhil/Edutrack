@@ -35,17 +35,26 @@ export interface Course {
   room?: string;
 }
 
+export type ResourceType = 'VIDEO' | 'YOUTUBE' | 'PDF' | 'PRESENTATION' | 'DOCUMENT' | 'EXTERNAL_LINK' | 'SLIDES' | 'LINK';
+export type ResourceStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+
 export interface CourseMaterial {
   id: string;
   courseId: string;
+  facultyId?: string;
   title: string;
+  description?: string;
   fileType?: string;
   fileSize?: string;
-  type?: 'PDF' | 'VIDEO' | 'SLIDES' | 'LINK';
+  type?: ResourceType;
   uploadedAt: string;
   url?: string;
   fileUrl?: string;
   size?: string;
+  moduleName?: string;
+  status?: ResourceStatus;
+  youtubeVideoId?: string;
+  thumbnailUrl?: string;
 }
 
 export interface Assignment {
@@ -58,6 +67,7 @@ export interface Assignment {
   totalMarks?: number;
   maxMarks?: number;
   createdAt: string;
+  status?: 'DRAFT' | 'PUBLISHED';
   attachments?: string[];
 }
 
@@ -83,6 +93,7 @@ export interface QuizQuestion {
   options: string[];
   correctOptionIndex: number;
   marks: number;
+  explanation?: string;
 }
 
 export interface Quiz {
@@ -96,6 +107,9 @@ export interface Quiz {
   durationMinutes: number;
   totalMarks: number;
   createdAt: string;
+  startDate?: string;
+  endDate?: string;
+  maxAttempts?: number;
   isPublished: boolean;
   questions: QuizQuestion[];
 }
@@ -113,6 +127,8 @@ export interface QuizAttempt {
   timeTakenSeconds: number;
 }
 
+export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE';
+
 export interface AttendanceRecord {
   id: string;
   courseId: string;
@@ -121,7 +137,7 @@ export interface AttendanceRecord {
   studentId: string;
   studentName?: string;
   date: string;
-  status: 'PRESENT' | 'ABSENT' | 'LATE';
+  status: AttendanceStatus;
 }
 
 export interface NotificationItem {

@@ -1,7 +1,8 @@
 -- =========================================================
 -- EduTrack LMS - Oracle Database DDL Schema Script
--- Project: EduTrack LMS
+-- Project: EduTrack LMS Enterprise Architecture
 -- Target DB: Oracle Database 19c / 21c / 23c
+-- Version: 3.0.0 (Faculty Academic Management & Learning Resources)
 -- =========================================================
 
 -- Drop Tables if existing
@@ -13,8 +14,11 @@ BEGIN
    EXECUTE IMMEDIATE 'DROP TABLE quizzes CASCADE CONSTRAINTS';
    EXECUTE IMMEDIATE 'DROP TABLE assignment_submissions CASCADE CONSTRAINTS';
    EXECUTE IMMEDIATE 'DROP TABLE assignments CASCADE CONSTRAINTS';
+   EXECUTE IMMEDIATE 'DROP TABLE learning_resources CASCADE CONSTRAINTS';
    EXECUTE IMMEDIATE 'DROP TABLE enrollments CASCADE CONSTRAINTS';
    EXECUTE IMMEDIATE 'DROP TABLE courses CASCADE CONSTRAINTS';
+   EXECUTE IMMEDIATE 'DROP TABLE parent_reviews CASCADE CONSTRAINTS';
+   EXECUTE IMMEDIATE 'DROP TABLE parents CASCADE CONSTRAINTS';
    EXECUTE IMMEDIATE 'DROP TABLE faculty CASCADE CONSTRAINTS';
    EXECUTE IMMEDIATE 'DROP TABLE students CASCADE CONSTRAINTS';
    EXECUTE IMMEDIATE 'DROP TABLE users CASCADE CONSTRAINTS';
@@ -33,6 +37,7 @@ CREATE TABLE users (
     email VARCHAR2(100) UNIQUE NOT NULL,
     password_hash VARCHAR2(255) NOT NULL,
     role VARCHAR2(20) CHECK (role IN ('ADMIN', 'FACULTY', 'STUDENT', 'PARENT')),
+    status VARCHAR2(20) DEFAULT 'APPROVED' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
     department VARCHAR2(100),
     avatar_url VARCHAR2(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -89,7 +94,7 @@ CREATE TABLE courses (
     faculty_id VARCHAR2(50) REFERENCES faculty(faculty_id)
 );
 
--- 5. ENROLLMENTS TABLE
+-- 7. ENROLLMENTS TABLE
 CREATE TABLE enrollments (
     enrollment_id VARCHAR2(50) PRIMARY KEY,
     student_id VARCHAR2(50) REFERENCES students(student_id),
@@ -98,7 +103,30 @@ CREATE TABLE enrollments (
     status VARCHAR2(20) DEFAULT 'ACTIVE'
 );
 
--- 6. ASSIGNMENTS TABLE
+-- 8. LEARNING RESOURCES & TEACHING VIDEOS TABLE
+CREATE TABLE learning_resources (
+    resource_id VARCHAR2(50) PRIMARY KEY,
+    course_id VARCHAR2(50) REFERENCES courses(course_id) ON DELETE CASCADE,
+    faculty_id VARCHAR2(50) REFERENCES faculty(faculty_id),
+    title VARCHAR2(250) NOT NULL,
+    description CLOB,
+    resource_type VARCHAR2(30) CHECK (resource_type IN ('VIDEO', 'YOUTUBE', 'PDF', 'PRESENTATION', 'DOCUMENT', 'EXTERNAL_LINK', 'SLIDES', 'LINK')),
+    resource_url VARCHAR2(1000) NOT NULL,
+    thumbnail_url VARCHAR2(500),
+    youtube_video_id VARCHAR2(50),
+    module_name VARCHAR2(100),
+    file_size VARCHAR2(50),
+    status VARCHAR2(20) DEFAULT 'PUBLISHED' CHECK (status IN ('DRAFT', 'PUBLISHED', 'ARCHIVED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_resources_course ON learning_resources(course_id);
+CREATE INDEX idx_resources_faculty ON learning_resources(faculty_id);
+CREATE INDEX idx_resources_status ON learning_resources(status);
+CREATE INDEX idx_resources_type ON learning_resources(resource_type);
+
+-- 9. ASSIGNMENTS TABLE
 CREATE TABLE assignments (
     assignment_id VARCHAR2(50) PRIMARY KEY,
     course_id VARCHAR2(50) REFERENCES courses(course_id) ON DELETE CASCADE,
@@ -106,22 +134,23 @@ CREATE TABLE assignments (
     description CLOB,
     deadline TIMESTAMP NOT NULL,
     max_marks NUMBER(5,2) NOT NULL,
+    status VARCHAR2(20) DEFAULT 'PUBLISHED' CHECK (status IN ('DRAFT', 'PUBLISHED')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. ASSIGNMENT SUBMISSIONS TABLE
+-- 10. ASSIGNMENT SUBMISSIONS TABLE
 CREATE TABLE assignment_submissions (
     submission_id VARCHAR2(50) PRIMARY KEY,
     assignment_id VARCHAR2(50) REFERENCES assignments(assignment_id) ON DELETE CASCADE,
     student_id VARCHAR2(50) REFERENCES students(student_id),
     submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     file_url VARCHAR2(500) NOT NULL,
-    status VARCHAR2(20) DEFAULT 'PENDING',
+    status VARCHAR2(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'GRADED')),
     marks_obtained NUMBER(5,2),
     feedback CLOB
 );
 
--- 8. QUIZZES TABLE
+-- 11. QUIZZES TABLE
 CREATE TABLE quizzes (
     quiz_id VARCHAR2(50) PRIMARY KEY,
     course_id VARCHAR2(50) REFERENCES courses(course_id) ON DELETE CASCADE,
@@ -129,20 +158,25 @@ CREATE TABLE quizzes (
     instructions CLOB,
     duration_minutes NUMBER(3) NOT NULL,
     total_marks NUMBER(5,2) NOT NULL,
-    is_published NUMBER(1) DEFAULT 1
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
+    max_attempts NUMBER(2) DEFAULT 1,
+    is_published NUMBER(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. QUESTIONS TABLE
+-- 12. QUESTIONS TABLE
 CREATE TABLE questions (
     question_id VARCHAR2(50) PRIMARY KEY,
     quiz_id VARCHAR2(50) REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
     question_text CLOB NOT NULL,
     options_json CLOB NOT NULL,
     correct_option_index NUMBER(2) NOT NULL,
-    marks NUMBER(5,2) NOT NULL
+    marks NUMBER(5,2) NOT NULL,
+    explanation CLOB
 );
 
--- 10. QUIZ ATTEMPTS TABLE
+-- 13. QUIZ ATTEMPTS TABLE
 CREATE TABLE quiz_attempts (
     attempt_id VARCHAR2(50) PRIMARY KEY,
     quiz_id VARCHAR2(50) REFERENCES quizzes(quiz_id) ON DELETE CASCADE,
@@ -152,16 +186,19 @@ CREATE TABLE quiz_attempts (
     time_taken_seconds NUMBER(6)
 );
 
--- 11. ATTENDANCE TABLE
+-- 14. ATTENDANCE TABLE (With uniqueness constraint to prevent duplicate attendance records)
 CREATE TABLE attendance (
     attendance_id VARCHAR2(50) PRIMARY KEY,
-    course_id VARCHAR2(50) REFERENCES courses(course_id),
-    student_id VARCHAR2(50) REFERENCES students(student_id),
+    course_id VARCHAR2(50) REFERENCES courses(course_id) ON DELETE CASCADE,
+    student_id VARCHAR2(50) REFERENCES students(student_id) ON DELETE CASCADE,
     attendance_date DATE NOT NULL,
-    status VARCHAR2(10) CHECK (status IN ('PRESENT', 'ABSENT', 'LATE'))
+    status VARCHAR2(10) CHECK (status IN ('PRESENT', 'ABSENT', 'LATE')),
+    CONSTRAINT uq_att_course_student_date UNIQUE (course_id, student_id, attendance_date)
 );
 
--- 12. AUDIT LOGS TABLE
+CREATE INDEX idx_att_course_date ON attendance(course_id, attendance_date);
+
+-- 15. AUDIT LOGS TABLE
 CREATE TABLE audit_logs (
     log_id VARCHAR2(50) PRIMARY KEY,
     performed_by VARCHAR2(100) NOT NULL,
@@ -172,23 +209,20 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- SAMPLE SEED DATA INSERTIONS
+-- SEED DATA
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
-VALUES ('usr-admin-1', 'Dr. Eleanor Vance', 'admin@edutrack.edu', '$2a$10$e8K71jL1...', 'ADMIN', 'Academic Affairs');
-
-INSERT INTO users (user_id, name, email, password_hash, role, department) 
-VALUES ('usr-fac-1', 'Prof. Alan Turing', 'faculty@edutrack.edu', '$2a$10$f9M82kM2...', 'FACULTY', 'Computer Science');
+VALUES ('usr-admin-1', 'Dr. Arthur Mitchell', 'admin@edutrack.edu', '$2a$10$e8K71jL1...', 'ADMIN', 'University Administration');
 
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
-VALUES ('usr-stu-1', 'Alex Rivera', 'student@edutrack.edu', '$2a$10$g0N93lN3...', 'STUDENT', 'Computer Science');
+VALUES ('usr-fac-1', 'Prof. Evelyn Reed', 'evelyn.reed@edutrack.edu', '$2a$10$f9M82kM2...', 'FACULTY', 'Computer Science');
 
-INSERT INTO students (student_id, user_id, student_reg_number, gpa, semester)
-VALUES ('stu-101', 'usr-stu-1', 'STU-2023-042', 3.82, 4);
+INSERT INTO users (user_id, name, email, password_hash, role, department) 
+VALUES ('usr-stu-1', 'Alex Rivera', 'alex.rivera@student.edutrack.edu', '$2a$10$g0N93lN3...', 'STUDENT', 'Computer Science');
 
-INSERT INTO faculty (faculty_id, user_id, faculty_employee_code, designation)
-VALUES ('fac-101', 'usr-fac-1', 'FAC-2022-012', 'Associate Professor');
+INSERT INTO users (user_id, name, email, password_hash, role, department) 
+VALUES ('usr-stu-2', 'Sophia Chen', 'sophia.chen@student.edutrack.edu', '$2a$10$h1P94mO4...', 'STUDENT', 'Computer Science');
 
-INSERT INTO courses (course_id, code, title, description, department, credits, semester, faculty_id)
-VALUES ('crs-101', 'CS-301', 'Data Structures & Algorithms', 'Core computer science algorithms and memory structures.', 'Computer Science', 4, 4, 'fac-101');
+INSERT INTO users (user_id, name, email, password_hash, role, department) 
+VALUES ('usr-parent-1', 'Raveendra', 'raveendra@edutrack.edu', '$2a$10$i2Q95nP5...', 'PARENT', 'Guardian Relations');
 
 COMMIT;

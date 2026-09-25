@@ -259,19 +259,128 @@ app.delete('/api/courses/:id', (req: Request, res: Response) => {
   res.json({ success: true, message: 'Course deleted' });
 });
 
-// Course Materials API
+// Course Materials & Teaching Videos API
 app.get('/api/materials', (req: Request, res: Response) => {
-  const { courseId } = req.query;
+  const { courseId, facultyId, status, type } = req.query;
+  let results = [...materialsStore];
   if (courseId) {
-    return res.json(materialsStore.filter((m) => m.courseId === courseId));
+    results = results.filter((m) => m.courseId === courseId);
   }
-  res.json(materialsStore);
+  if (facultyId) {
+    results = results.filter((m) => m.facultyId === facultyId);
+  }
+  if (status) {
+    results = results.filter((m) => m.status === status);
+  }
+  if (type) {
+    results = results.filter((m) => m.type === type);
+  }
+  res.json(results);
+});
+
+app.get('/api/materials/:id', (req: Request, res: Response) => {
+  const item = materialsStore.find((m) => m.id === req.params.id);
+  if (!item) return res.status(404).json({ error: 'Learning material not found' });
+  res.json(item);
 });
 
 app.post('/api/materials', (req: Request, res: Response) => {
-  const newMaterial = { id: `mat-${Date.now()}`, uploadedAt: new Date().toISOString().split('T')[0], ...req.body };
-  materialsStore.push(newMaterial);
+  const { courseId, facultyId, title, description, type, url, fileUrl, moduleName, status, performedBy, userRole } = req.body;
+  
+  if (!courseId || !title) {
+    return res.status(400).json({ error: 'courseId and title are required' });
+  }
+
+  // Authorize: If caller is FACULTY, verify course assignment
+  const targetCourse = coursesStore.find((c) => c.id === courseId);
+  if (!targetCourse) {
+    return res.status(404).json({ error: 'Target course not found' });
+  }
+
+  if (userRole === 'FACULTY' && facultyId && targetCourse.facultyId && targetCourse.facultyId !== facultyId) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned to instruct this course' });
+  }
+
+  // YouTube URL extraction if type is YOUTUBE or VIDEO with youtube url
+  let youtubeVideoId: string | undefined;
+  let thumbnailUrl: string | undefined;
+  const targetUrl = url || fileUrl || '';
+
+  if (type === 'YOUTUBE' || (type === 'VIDEO' && (targetUrl.includes('youtube.com') || targetUrl.includes('youtu.be')))) {
+    const regExp = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = targetUrl.match(regExp);
+    if (match && match[1]) {
+      youtubeVideoId = match[1];
+      thumbnailUrl = `https://img.youtube.com/vi/${youtubeVideoId}/hqdefault.jpg`;
+    } else if (type === 'YOUTUBE') {
+      return res.status(400).json({ error: 'Invalid YouTube URL provided. Please enter a valid YouTube link.' });
+    }
+  }
+
+  const newMaterial: any = {
+    id: `mat-${Date.now()}`,
+    courseId,
+    facultyId: facultyId || targetCourse.facultyId,
+    title: title.trim(),
+    description: description || '',
+    type: type || 'PDF',
+    fileType: type === 'YOUTUBE' ? 'VIDEO' : (type || 'PDF'),
+    url: targetUrl,
+    fileUrl: targetUrl,
+    size: req.body.size || (type === 'YOUTUBE' ? 'Stream' : '2.4 MB'),
+    fileSize: req.body.fileSize || (type === 'YOUTUBE' ? 'Stream' : '2.4 MB'),
+    moduleName: moduleName || 'General Module',
+    status: status || 'PUBLISHED',
+    youtubeVideoId,
+    thumbnailUrl,
+    uploadedAt: new Date().toISOString().split('T')[0]
+  };
+
+  materialsStore.unshift(newMaterial);
+
+  // Notify students if published
+  if (newMaterial.status === 'PUBLISHED') {
+    notificationsStore.unshift({
+      id: `notif-${Date.now()}`,
+      title: type === 'YOUTUBE' ? 'New Teaching Video Added' : 'New Study Material Published',
+      message: `${targetCourse.code}: "${newMaterial.title}" is now available for review.`,
+      type: 'ASSIGNMENT',
+      createdAt: new Date().toISOString(),
+      isRead: false
+    });
+  }
+
+  addAuditLog(performedBy || 'Faculty', userRole || 'FACULTY', 'MATERIAL_CREATE', `Created ${newMaterial.type} resource "${newMaterial.title}" for ${targetCourse.code}`);
+
   res.status(201).json(newMaterial);
+});
+
+app.put('/api/materials/:id', (req: Request, res: Response) => {
+  const index = materialsStore.findIndex((m) => m.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Material not found' });
+
+  const existing = materialsStore[index];
+  const { performedBy, userRole, facultyId } = req.body;
+
+  // Authorization check
+  const targetCourse = coursesStore.find((c) => c.id === existing.courseId);
+  if (userRole === 'FACULTY' && facultyId && targetCourse && targetCourse.facultyId !== facultyId) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned to instruct this course' });
+  }
+
+  materialsStore[index] = { ...existing, ...req.body, updatedAt: new Date().toISOString() };
+  addAuditLog(performedBy || 'Faculty', userRole || 'FACULTY', 'MATERIAL_UPDATE', `Updated resource "${materialsStore[index].title}"`);
+  res.json(materialsStore[index]);
+});
+
+app.delete('/api/materials/:id', (req: Request, res: Response) => {
+  const index = materialsStore.findIndex((m) => m.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Material not found' });
+
+  const deleted = materialsStore[index];
+  materialsStore.splice(index, 1);
+  addAuditLog('Faculty', 'FACULTY', 'MATERIAL_DELETE', `Deleted resource "${deleted.title}"`);
+  res.json({ success: true, message: 'Resource removed successfully' });
 });
 
 // Assignments API
@@ -295,6 +404,32 @@ app.post('/api/assignments', (req: Request, res: Response) => {
 
   addAuditLog(req.body.performedBy || 'Faculty', 'FACULTY', 'ASSIGNMENT_CREATE', `Created assignment "${newAssignment.title}"`);
   res.status(201).json(newAssignment);
+});
+
+app.put('/api/assignments/:id', (req: Request, res: Response) => {
+  const index = assignmentsStore.findIndex((a) => a.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Assignment not found' });
+
+  const existing = assignmentsStore[index];
+  const { performedBy, userRole, facultyId } = req.body;
+  const targetCourse = coursesStore.find((c) => c.id === existing.courseId);
+  if (userRole === 'FACULTY' && facultyId && targetCourse && targetCourse.facultyId !== facultyId) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned to this course' });
+  }
+
+  assignmentsStore[index] = { ...existing, ...req.body };
+  addAuditLog(performedBy || 'Faculty', userRole || 'FACULTY', 'ASSIGNMENT_UPDATE', `Updated assignment "${assignmentsStore[index].title}"`);
+  res.json(assignmentsStore[index]);
+});
+
+app.delete('/api/assignments/:id', (req: Request, res: Response) => {
+  const index = assignmentsStore.findIndex((a) => a.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Assignment not found' });
+
+  const deleted = assignmentsStore[index];
+  assignmentsStore.splice(index, 1);
+  addAuditLog('Faculty', 'FACULTY', 'ASSIGNMENT_DELETE', `Deleted assignment "${deleted.title}"`);
+  res.json({ success: true, message: 'Assignment removed' });
 });
 
 // Submissions API
@@ -344,28 +479,144 @@ app.put('/api/submissions/:id/grade', (req: Request, res: Response) => {
 
 // Quizzes API
 app.get('/api/quizzes', (req: Request, res: Response) => {
-  res.json(quizzesStore);
+  const { courseId, isPublished } = req.query;
+  let results = [...quizzesStore];
+  if (courseId) {
+    results = results.filter((q) => q.courseId === courseId);
+  }
+  if (isPublished !== undefined) {
+    const pubVal = isPublished === 'true';
+    results = results.filter((q) => q.isPublished === pubVal);
+  }
+  res.json(results);
+});
+
+app.get('/api/quizzes/:id', (req: Request, res: Response) => {
+  const quiz = quizzesStore.find((q) => q.id === req.params.id);
+  if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+  res.json(quiz);
+});
+
+app.get('/api/quizzes/:id/analytics', (req: Request, res: Response) => {
+  const quiz = quizzesStore.find((q) => q.id === req.params.id);
+  if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
+
+  const attempts = quizAttemptsStore.filter((qa) => qa.quizId === quiz.id);
+  const targetCourse = coursesStore.find((c) => c.id === quiz.courseId);
+  const totalStudents = targetCourse?.enrolledStudentsCount || 40;
+
+  const attemptedCount = attempts.length;
+  const notAttemptedCount = Math.max(0, totalStudents - attemptedCount);
+
+  let averageScore = 0;
+  let highestScore = 0;
+  let lowestScore = attemptedCount > 0 ? quiz.totalMarks : 0;
+  let passedCount = 0;
+
+  const distribution = {
+    '90-100%': 0,
+    '80-89%': 0,
+    '70-79%': 0,
+    '60-69%': 0,
+    '<60%': 0
+  };
+
+  attempts.forEach((a) => {
+    const pct = quiz.totalMarks > 0 ? (a.score / quiz.totalMarks) * 100 : 0;
+    averageScore += a.score;
+    if (a.score > highestScore) highestScore = a.score;
+    if (a.score < lowestScore) lowestScore = a.score;
+    if (pct >= 50) passedCount++;
+
+    if (pct >= 90) distribution['90-100%']++;
+    else if (pct >= 80) distribution['80-89%']++;
+    else if (pct >= 70) distribution['70-79%']++;
+    else if (pct >= 60) distribution['60-69%']++;
+    else distribution['<60%']++;
+  });
+
+  if (attemptedCount > 0) {
+    averageScore = Number((averageScore / attemptedCount).toFixed(1));
+  }
+
+  const passPercentage = attemptedCount > 0 ? Math.round((passedCount / attemptedCount) * 100) : 0;
+
+  res.json({
+    quizId: quiz.id,
+    quizTitle: quiz.title,
+    courseCode: quiz.courseCode,
+    totalMarks: quiz.totalMarks,
+    enrolledStudents: totalStudents,
+    attemptedCount,
+    notAttemptedCount,
+    averageScore,
+    highestScore,
+    lowestScore,
+    passPercentage,
+    distribution,
+    recentAttempts: attempts.slice(0, 10)
+  });
 });
 
 app.post('/api/quizzes', (req: Request, res: Response) => {
+  const { courseId, facultyId, userRole, performedBy } = req.body;
+  const targetCourse = coursesStore.find((c) => c.id === courseId);
+  if (!targetCourse) return res.status(404).json({ error: 'Target course not found' });
+
+  if (userRole === 'FACULTY' && facultyId && targetCourse.facultyId !== facultyId) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned to this course' });
+  }
+
   const newQuiz = {
     id: `qz-${Date.now()}`,
+    courseCode: targetCourse.code,
+    courseTitle: targetCourse.title,
     createdAt: new Date().toISOString().split('T')[0],
-    isPublished: true,
+    isPublished: req.body.isPublished ?? true,
     ...req.body
   };
   quizzesStore.push(newQuiz);
   
-  notificationsStore.unshift({
-    id: `notif-${Date.now()}`,
-    title: 'New Quiz Available',
-    message: `Quiz "${newQuiz.title}" is ready to attempt! Duration: ${newQuiz.durationMinutes} mins.`,
-    type: 'QUIZ',
-    createdAt: new Date().toISOString(),
-    isRead: false
-  });
+  if (newQuiz.isPublished) {
+    notificationsStore.unshift({
+      id: `notif-${Date.now()}`,
+      title: 'New Quiz Available',
+      message: `Quiz "${newQuiz.title}" is ready to attempt! Duration: ${newQuiz.durationMinutes} mins.`,
+      type: 'QUIZ',
+      createdAt: new Date().toISOString(),
+      isRead: false
+    });
+  }
+
+  addAuditLog(performedBy || 'Faculty', userRole || 'FACULTY', 'QUIZ_CREATE', `Created quiz "${newQuiz.title}" for ${targetCourse.code}`);
 
   res.status(201).json(newQuiz);
+});
+
+app.put('/api/quizzes/:id', (req: Request, res: Response) => {
+  const index = quizzesStore.findIndex((q) => q.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Quiz not found' });
+
+  const existing = quizzesStore[index];
+  const { performedBy, userRole, facultyId } = req.body;
+  const targetCourse = coursesStore.find((c) => c.id === existing.courseId);
+  if (userRole === 'FACULTY' && facultyId && targetCourse && targetCourse.facultyId !== facultyId) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned to this course' });
+  }
+
+  quizzesStore[index] = { ...existing, ...req.body };
+  addAuditLog(performedBy || 'Faculty', userRole || 'FACULTY', 'QUIZ_UPDATE', `Updated quiz "${quizzesStore[index].title}"`);
+  res.json(quizzesStore[index]);
+});
+
+app.delete('/api/quizzes/:id', (req: Request, res: Response) => {
+  const index = quizzesStore.findIndex((q) => q.id === req.params.id);
+  if (index === -1) return res.status(404).json({ error: 'Quiz not found' });
+
+  const deleted = quizzesStore[index];
+  quizzesStore.splice(index, 1);
+  addAuditLog('Faculty', 'FACULTY', 'QUIZ_DELETE', `Deleted quiz "${deleted.title}"`);
+  res.json({ success: true, message: 'Quiz removed successfully' });
 });
 
 app.post('/api/quizzes/:id/submit', (req: Request, res: Response) => {
@@ -401,27 +652,81 @@ app.post('/api/quizzes/:id/submit', (req: Request, res: Response) => {
 });
 
 app.get('/api/quiz-attempts', (req: Request, res: Response) => {
-  res.json(quizAttemptsStore);
+  const { quizId, studentId } = req.query;
+  let results = [...quizAttemptsStore];
+  if (quizId) results = results.filter((q) => q.quizId === quizId);
+  if (studentId) results = results.filter((q) => q.studentId === studentId);
+  res.json(results);
 });
 
 // Attendance API
 app.get('/api/attendance', (req: Request, res: Response) => {
-  res.json(attendanceStore);
+  const { courseId, studentId, date } = req.query;
+  let results = [...attendanceStore];
+  if (courseId) results = results.filter((a) => a.courseId === courseId);
+  if (studentId) results = results.filter((a) => a.studentId === studentId);
+  if (date) results = results.filter((a) => a.date === date);
+  res.json(results);
 });
 
 app.post('/api/attendance', (req: Request, res: Response) => {
   const records = req.body.records; // array of records
+  const { performedBy, userRole, facultyId } = req.body;
+
   if (Array.isArray(records)) {
     records.forEach((r: any) => {
+      // Prevent duplicate attendance for same (course_id, student_id, date)
       const existing = attendanceStore.findIndex((a) => a.courseId === r.courseId && a.studentId === r.studentId && a.date === r.date);
       if (existing !== -1) {
         attendanceStore[existing].status = r.status;
       } else {
-        attendanceStore.push({ id: `att-${Date.now()}-${Math.random()}`, ...r });
+        attendanceStore.push({ id: `att-${Date.now()}-${Math.floor(Math.random() * 10000)}`, ...r });
       }
     });
+
+    addAuditLog(performedBy || 'Faculty', userRole || 'FACULTY', 'ATTENDANCE_UPDATE', `Marked attendance for ${records.length} students`);
   }
   res.json({ success: true, count: records?.length || 0 });
+});
+
+app.post('/api/courses/:courseId/attendance/bulk', (req: Request, res: Response) => {
+  const { courseId } = req.params;
+  const { date, records, facultyId, userRole, performedBy } = req.body;
+
+  const targetCourse = coursesStore.find((c) => c.id === courseId);
+  if (!targetCourse) return res.status(404).json({ error: 'Course not found' });
+
+  if (userRole === 'FACULTY' && facultyId && targetCourse.facultyId !== facultyId) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned to instruct this course' });
+  }
+
+  if (!date || !Array.isArray(records)) {
+    return res.status(400).json({ error: 'Valid date and records array required' });
+  }
+
+  let updatedCount = 0;
+  records.forEach((rec: any) => {
+    const existing = attendanceStore.findIndex((a) => a.courseId === courseId && a.studentId === rec.studentId && a.date === date);
+    if (existing !== -1) {
+      attendanceStore[existing].status = rec.status;
+    } else {
+      attendanceStore.push({
+        id: `att-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+        courseId,
+        courseCode: targetCourse.code,
+        courseName: targetCourse.title,
+        studentId: rec.studentId,
+        studentName: rec.studentName,
+        date,
+        status: rec.status
+      });
+    }
+    updatedCount++;
+  });
+
+  addAuditLog(performedBy || 'Faculty', 'FACULTY', 'ATTENDANCE_RECORDED', `Recorded session attendance for ${targetCourse.code} on ${date} (${updatedCount} students)`);
+
+  res.json({ success: true, count: updatedCount, date, courseCode: targetCourse.code });
 });
 
 // Notifications API

@@ -121,20 +121,62 @@ export const mockCourseMaterials: CourseMaterial[] = [
   {
     id: 'mat-1',
     courseId: 'crs-1',
-    title: 'Lecture 01 - Cloud Native Systems & Raft Consensus.pdf',
-    fileType: 'PDF',
-    fileSize: '4.2 MB',
-    uploadedAt: '2026-08-20',
-    url: '#'
+    facultyId: 'usr-fac-1',
+    title: 'Distributed Systems & Cloud Architecture Fundamentals',
+    description: 'Comprehensive video lecture introducing horizontal scaling, cap theorem, and distributed consistency models.',
+    type: 'YOUTUBE',
+    fileType: 'VIDEO',
+    url: 'https://www.youtube.com/watch?v=77Xm3i3wQ-w',
+    youtubeVideoId: '77Xm3i3wQ-w',
+    thumbnailUrl: 'https://img.youtube.com/vi/77Xm3i3wQ-w/hqdefault.jpg',
+    moduleName: 'Unit 1: Fundamentals of Distributed Systems',
+    status: 'PUBLISHED',
+    uploadedAt: '2026-08-20'
   },
   {
     id: 'mat-2',
-    courseId: 'crs-2',
-    title: 'Oracle DDL & B-Tree Index Optimization Guide.pdf',
+    courseId: 'crs-1',
+    facultyId: 'usr-fac-1',
+    title: 'Lecture 01 - Cloud Native Systems & Raft Consensus.pdf',
+    description: 'Instructor slide deck detailing the Raft leader election state machine and RPC flow.',
     fileType: 'PDF',
+    type: 'PDF',
+    fileSize: '4.2 MB',
+    size: '4.2 MB',
+    moduleName: 'Unit 1: Fundamentals of Distributed Systems',
+    status: 'PUBLISHED',
+    uploadedAt: '2026-08-22',
+    url: 'https://example.com/materials/raft-consensus.pdf'
+  },
+  {
+    id: 'mat-3',
+    courseId: 'crs-2',
+    facultyId: 'usr-fac-1',
+    title: 'Oracle Database B-Tree Indexing and Query Execution Internals',
+    description: 'Detailed video walkthrough of execution plan cost estimation and index clustering factors.',
+    type: 'YOUTUBE',
+    fileType: 'VIDEO',
+    url: 'https://www.youtube.com/watch?v=aivb_e1L_00',
+    youtubeVideoId: 'aivb_e1L_00',
+    thumbnailUrl: 'https://img.youtube.com/vi/aivb_e1L_00/hqdefault.jpg',
+    moduleName: 'Unit 2: Indexing & Storage Engine',
+    status: 'PUBLISHED',
+    uploadedAt: '2026-08-25'
+  },
+  {
+    id: 'mat-4',
+    courseId: 'crs-2',
+    facultyId: 'usr-fac-1',
+    title: 'Oracle DDL & B-Tree Index Optimization Guide.pdf',
+    description: 'Practical lab guide with SQL scripts for EXPLAIN PLAN analysis on Oracle 19c.',
+    fileType: 'PDF',
+    type: 'PDF',
     fileSize: '6.1 MB',
-    uploadedAt: '2026-08-25',
-    url: '#'
+    size: '6.1 MB',
+    moduleName: 'Unit 2: Indexing & Storage Engine',
+    status: 'PUBLISHED',
+    uploadedAt: '2026-08-26',
+    url: 'https://example.com/materials/oracle-tuning.pdf'
   }
 ];
 

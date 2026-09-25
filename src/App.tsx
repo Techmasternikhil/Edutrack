@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { User, UserRole, Course, Assignment, Submission, Quiz, QuizAttempt, AttendanceRecord, Notification, ParentReview } from './types';
+import { User, UserRole, Course, CourseMaterial, Assignment, Submission, Quiz, QuizAttempt, AttendanceRecord, Notification, ParentReview } from './types';
 import {
   mockUsers,
   mockCourses,
+  mockCourseMaterials,
   mockAssignments,
   mockSubmissions,
   mockQuizzes,
@@ -43,6 +44,7 @@ export function App() {
     return null; // Prompt login screen
   });
   const [courses, setCourses] = useState<Course[]>(mockCourses);
+  const [materials, setMaterials] = useState<CourseMaterial[]>(mockCourseMaterials);
   const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments);
   const [submissions, setSubmissions] = useState<Submission[]>(mockSubmissions);
   const [quizzes, setQuizzes] = useState<Quiz[]>(mockQuizzes);
@@ -160,6 +162,7 @@ export function App() {
         Promise.all([
           fetch('/api/users').then((r) => r.json()).catch(() => null),
           fetch('/api/courses').then((r) => r.json()).catch(() => null),
+          fetch('/api/materials').then((r) => r.json()).catch(() => null),
           fetch('/api/assignments').then((r) => r.json()).catch(() => null),
           fetch('/api/submissions').then((r) => r.json()).catch(() => null),
           fetch('/api/quizzes').then((r) => r.json()).catch(() => null),
@@ -167,9 +170,10 @@ export function App() {
           fetch('/api/attendance').then((r) => r.json()).catch(() => null),
           fetch('/api/notifications').then((r) => r.json()).catch(() => null),
           fetch('/api/parent/reviews').then((r) => r.json()).catch(() => null)
-        ]).then(([u, c, asg, subs, qz, qa, att, notifs, revs]) => {
+        ]).then(([u, c, mats, asg, subs, qz, qa, att, notifs, revs]) => {
           if (u && Array.isArray(u) && u.length > 0) setUsers(u);
           if (c && Array.isArray(c) && c.length > 0) setCourses(c);
+          if (mats && Array.isArray(mats) && mats.length > 0) setMaterials(mats);
           if (asg && Array.isArray(asg) && asg.length > 0) setAssignments(asg);
           if (subs && Array.isArray(subs) && subs.length > 0) setSubmissions(subs);
           if (qz && Array.isArray(qz) && qz.length > 0) setQuizzes(qz);
@@ -260,6 +264,185 @@ export function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ facultyReply: reply, status: 'ACKNOWLEDGED' })
     }).catch((err) => console.log('Backend sync skipped:', err));
+  };
+
+  // Faculty saves learning material (video/pdf/slides)
+  const handleSaveMaterial = (data: Partial<CourseMaterial>) => {
+    if (data.id) {
+      // Edit existing
+      setMaterials((prev) =>
+        prev.map((m) => (m.id === data.id ? ({ ...m, ...data } as CourseMaterial) : m))
+      );
+      fetch(`/api/materials/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, performedBy: currentUser?.name, userRole: currentUser?.role, facultyId: currentUser?.id })
+      }).catch((err) => console.log('Backend material update error:', err));
+    } else {
+      // Create new
+      const newMat: CourseMaterial = {
+        id: `mat-${Date.now()}`,
+        courseId: data.courseId || '',
+        facultyId: currentUser?.id,
+        title: data.title || '',
+        description: data.description || '',
+        type: data.type || 'PDF',
+        fileType: data.fileType || data.type || 'PDF',
+        url: data.url || data.fileUrl || '',
+        fileUrl: data.url || data.fileUrl || '',
+        moduleName: data.moduleName || 'Unit 1',
+        status: data.status || 'PUBLISHED',
+        youtubeVideoId: data.youtubeVideoId,
+        thumbnailUrl: data.thumbnailUrl,
+        size: data.size || '3.0 MB',
+        uploadedAt: new Date().toISOString().split('T')[0]
+      };
+      setMaterials((prev) => [newMat, ...prev]);
+
+      fetch('/api/materials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newMat, performedBy: currentUser?.name, userRole: currentUser?.role, facultyId: currentUser?.id })
+      }).catch((err) => console.log('Backend material create error:', err));
+    }
+  };
+
+  // Faculty deletes material
+  const handleDeleteMaterial = (materialId: string) => {
+    setMaterials((prev) => prev.filter((m) => m.id !== materialId));
+    fetch(`/api/materials/${materialId}`, {
+      method: 'DELETE'
+    }).catch((err) => console.log('Backend material delete error:', err));
+  };
+
+  // Faculty creates or edits quiz
+  const handleSaveQuiz = (data: Partial<Quiz>) => {
+    if (data.id) {
+      setQuizzes((prev) =>
+        prev.map((q) => (q.id === data.id ? ({ ...q, ...data } as Quiz) : q))
+      );
+      fetch(`/api/quizzes/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, performedBy: currentUser?.name, userRole: currentUser?.role, facultyId: currentUser?.id })
+      }).catch((err) => console.log('Backend quiz update error:', err));
+    } else {
+      const newQz: Quiz = {
+        id: `qz-${Date.now()}`,
+        courseId: data.courseId || '',
+        courseCode: data.courseCode || '',
+        courseTitle: data.courseTitle || '',
+        title: data.title || '',
+        description: data.description || '',
+        instructions: data.instructions || '',
+        durationMinutes: data.durationMinutes || 20,
+        totalMarks: data.totalMarks || 10,
+        isPublished: data.isPublished ?? true,
+        questions: data.questions || [],
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      setQuizzes((prev) => [newQz, ...prev]);
+
+      fetch('/api/quizzes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newQz, performedBy: currentUser?.name, userRole: currentUser?.role, facultyId: currentUser?.id })
+      }).catch((err) => console.log('Backend quiz create error:', err));
+    }
+  };
+
+  // Faculty deletes quiz
+  const handleDeleteQuiz = (quizId: string) => {
+    setQuizzes((prev) => prev.filter((q) => q.id !== quizId));
+    fetch(`/api/quizzes/${quizId}`, {
+      method: 'DELETE'
+    }).catch((err) => console.log('Backend quiz delete error:', err));
+  };
+
+  // Faculty creates or edits assignment
+  const handleSaveAssignment = (data: Partial<Assignment>) => {
+    if (data.id) {
+      setAssignments((prev) =>
+        prev.map((a) => (a.id === data.id ? ({ ...a, ...data } as Assignment) : a))
+      );
+      fetch(`/api/assignments/${data.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, performedBy: currentUser?.name, userRole: currentUser?.role, facultyId: currentUser?.id })
+      }).catch((err) => console.log('Backend assignment update error:', err));
+    } else {
+      const newAsg: Assignment = {
+        id: `asg-${Date.now()}`,
+        courseId: data.courseId || '',
+        courseCode: data.courseCode || '',
+        title: data.title || '',
+        description: data.description || '',
+        deadline: data.deadline || '',
+        totalMarks: data.totalMarks || 100,
+        maxMarks: data.maxMarks || 100,
+        status: data.status || 'PUBLISHED',
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      setAssignments((prev) => [newAsg, ...prev]);
+
+      fetch('/api/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newAsg, performedBy: currentUser?.name, userRole: currentUser?.role, facultyId: currentUser?.id })
+      }).catch((err) => console.log('Backend assignment create error:', err));
+    }
+  };
+
+  // Faculty deletes assignment
+  const handleDeleteAssignment = (assignmentId: string) => {
+    setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+    fetch(`/api/assignments/${assignmentId}`, {
+      method: 'DELETE'
+    }).catch((err) => console.log('Backend assignment delete error:', err));
+  };
+
+  // Faculty records bulk session attendance
+  const handleSaveAttendance = (
+    courseId: string,
+    date: string,
+    records: { studentId: string; studentName: string; status: any }[]
+  ) => {
+    const targetCourse = courses.find((c) => c.id === courseId);
+    setAttendance((prev) => {
+      const updated = [...prev];
+      records.forEach((rec) => {
+        const existingIdx = updated.findIndex(
+          (a) => a.courseId === courseId && a.studentId === rec.studentId && a.date === date
+        );
+        if (existingIdx !== -1) {
+          updated[existingIdx] = { ...updated[existingIdx], status: rec.status };
+        } else {
+          updated.push({
+            id: `att-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+            courseId,
+            courseCode: targetCourse?.code,
+            courseName: targetCourse?.title,
+            studentId: rec.studentId,
+            studentName: rec.studentName,
+            date,
+            status: rec.status
+          });
+        }
+      });
+      return updated;
+    });
+
+    fetch(`/api/courses/${courseId}/attendance/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date,
+        records,
+        facultyId: currentUser?.id,
+        userRole: currentUser?.role,
+        performedBy: currentUser?.name
+      })
+    }).catch((err) => console.log('Backend bulk attendance sync error:', err));
   };
 
   // Student submits assignment
@@ -403,6 +586,7 @@ export function App() {
           <StudentDashboard
             currentStudent={currentUser}
             courses={courses}
+            materials={materials}
             assignments={assignments}
             submissions={submissions}
             quizzes={quizzes}
@@ -417,11 +601,23 @@ export function App() {
           <FacultyDashboard
             currentFaculty={currentUser}
             courses={courses}
+            materials={materials}
+            assignments={assignments}
             submissions={submissions}
-            parentReviews={parentReviews}
+            quizzes={quizzes}
+            quizAttempts={quizAttempts}
             attendance={attendance}
+            parentReviews={parentReviews}
+            students={users}
             onGradeSubmission={handleGradeSubmission}
             onReplyParentReview={handleReplyParentReview}
+            onSaveMaterial={handleSaveMaterial}
+            onDeleteMaterial={handleDeleteMaterial}
+            onSaveQuiz={handleSaveQuiz}
+            onDeleteQuiz={handleDeleteQuiz}
+            onSaveAssignment={handleSaveAssignment}
+            onDeleteAssignment={handleDeleteAssignment}
+            onSaveAttendance={handleSaveAttendance}
           />
         )}
 

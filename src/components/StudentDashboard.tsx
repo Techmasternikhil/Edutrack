@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { User, Course, Assignment, Submission, Quiz, QuizAttempt, AttendanceRecord } from '../types';
+import {
+  User,
+  Course,
+  CourseMaterial,
+  Assignment,
+  Submission,
+  Quiz,
+  QuizAttempt,
+  AttendanceRecord
+} from '../types';
+import { APP_CONFIG } from '../config/constants';
+import { YouTubeVideoPlayer } from './faculty/YouTubeVideoPlayer';
 import {
   GraduationCap,
   Award,
@@ -9,12 +20,19 @@ import {
   FileCheck2,
   HelpCircle,
   TrendingUp,
-  Upload
+  Upload,
+  Video,
+  Play,
+  FileText,
+  AlertTriangle,
+  Clock,
+  ExternalLink
 } from 'lucide-react';
 
 interface StudentDashboardProps {
   currentStudent: User;
   courses: Course[];
+  materials?: CourseMaterial[];
   assignments: Assignment[];
   submissions: Submission[];
   quizzes: Quiz[];
@@ -27,6 +45,7 @@ interface StudentDashboardProps {
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   currentStudent,
   courses,
+  materials = [],
   assignments,
   submissions,
   quizzes,
@@ -38,16 +57,47 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const [selectedAsgId, setSelectedAsgId] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
 
+  // Active student tab: 'ALL' | 'VIDEOS' | 'MATERIALS' | 'ASSIGNMENTS' | 'QUIZZES' | 'ATTENDANCE'
+  const [activeTab, setActiveTab] = useState<string>('ALL');
+
+  // Video preview player state
+  const [activeVideo, setActiveVideo] = useState<CourseMaterial | null>(null);
+
   // Quiz state
   const [takingQuiz, setTakingQuiz] = useState<Quiz | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
   const [quizSubmittedResult, setQuizSubmittedResult] = useState<{ score: number; totalMarks: number } | null>(null);
 
+  // Filter: enrolled subjects only
+  const enrolledCourseIds = courses.map((c) => c.id);
+  const enrolledCourseCodes = courses.map((c) => c.code);
+
+  // Only published learning materials for enrolled courses
+  const studentMaterials = materials.filter(
+    (m) => enrolledCourseIds.includes(m.courseId) && (m.status === 'PUBLISHED' || !m.status)
+  );
+
+  const studentVideos = studentMaterials.filter(
+    (m) => m.type === 'YOUTUBE' || m.type === 'VIDEO'
+  );
+
+  const studentDocs = studentMaterials.filter(
+    (m) => m.type !== 'YOUTUBE' && m.type !== 'VIDEO'
+  );
+
+  // Only published quizzes for enrolled courses
+  const studentQuizzes = quizzes.filter(
+    (q) => (enrolledCourseIds.includes(q.courseId) || enrolledCourseCodes.includes(q.courseCode || '')) && q.isPublished
+  );
+
+  // Personal metrics
   const mySubmissions = submissions.filter((s) => s.studentId === currentStudent.id);
   const myAttendance = attendance.filter((a) => a.studentId === currentStudent.id);
   const myQuizAttempts = quizAttempts.filter((q) => q.studentId === currentStudent.id);
   const presentCount = myAttendance.filter((a) => a.status === 'PRESENT').length;
   const attendanceRate = myAttendance.length > 0 ? Math.round((presentCount / myAttendance.length) * 100) : 100;
+
+  const isAttendanceBelowThreshold = attendanceRate < APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD;
 
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +105,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     const asg = assignments.find((a) => a.id === selectedAsgId);
     if (!asg) return;
 
-    onSubmitAssignment(asg.id, asg.title, asg.courseCode, fileName);
+    onSubmitAssignment(asg.id, asg.title, asg.courseCode || '', fileName);
     setSelectedAsgId(null);
     setFileName('');
   };
@@ -83,6 +133,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in">
+      {/* Top Banner */}
       <div className="p-6 rounded-2xl glass-panel bg-gradient-to-r from-emerald-950/30 via-slate-900 to-indigo-950/30 border border-emerald-500/20">
         <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
           <GraduationCap className="w-4 h-4" />
@@ -96,14 +147,31 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </p>
       </div>
 
+      {/* Attendance Warning Alert (if statutory threshold breached) */}
+      {isAttendanceBelowThreshold && (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-between text-rose-300 text-xs">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 shrink-0 text-rose-400" />
+            <div>
+              <span className="font-bold">Statutory Attendance Warning:</span> Your attendance is currently at{' '}
+              <span className="font-mono font-bold">{attendanceRate}%</span>, which is below the mandatory{' '}
+              {APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD}% university compliance threshold.
+            </div>
+          </div>
+          <span className="text-[11px] px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30">
+            Action Required
+          </span>
+        </div>
+      )}
+
       {/* Metrics Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl glass-card flex items-center justify-between">
           <div>
             <div className="text-xs text-slate-400 font-medium">Cumulative GPA</div>
             <div className="text-2xl font-black text-emerald-400 mt-1">{currentStudent.gpa?.toFixed(2)}</div>
             <div className="text-[10px] text-emerald-500/80 font-medium flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> Dean's List
+              <TrendingUp className="w-3 h-3" /> Dean's List Standing
             </div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
@@ -114,7 +182,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <div className="p-4 rounded-xl glass-card flex items-center justify-between">
           <div>
             <div className="text-xs text-slate-400 font-medium">Attendance Record</div>
-            <div className="text-2xl font-black text-indigo-400 mt-1">{attendanceRate}%</div>
+            <div
+              className={`text-2xl font-black mt-1 ${
+                isAttendanceBelowThreshold ? 'text-rose-400' : 'text-indigo-400'
+              }`}
+            >
+              {attendanceRate}%
+            </div>
             <div className="text-[10px] text-slate-400">
               {presentCount} / {myAttendance.length} classes attended
             </div>
@@ -126,7 +200,18 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
 
         <div className="p-4 rounded-xl glass-card flex items-center justify-between">
           <div>
-            <div className="text-xs text-slate-400 font-medium">Completed Submissions</div>
+            <div className="text-xs text-slate-400 font-medium">Teaching Videos</div>
+            <div className="text-2xl font-black text-rose-400 mt-1">{studentVideos.length}</div>
+            <div className="text-[10px] text-slate-400">Available lecture streamings</div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+            <Video className="w-5 h-5 text-rose-400" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl glass-card flex items-center justify-between">
+          <div>
+            <div className="text-xs text-slate-400 font-medium">Coursework Completed</div>
             <div className="text-2xl font-black text-amber-400 mt-1">{mySubmissions.length}</div>
             <div className="text-[10px] text-slate-400">
               {mySubmissions.filter((s) => s.status === 'GRADED').length} Graded by Faculty
@@ -138,7 +223,138 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         </div>
       </div>
 
-      {/* Two Column Grid: Assignments & Enrolled Courses */}
+      {/* Navigation Sub-Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-800 text-xs">
+        {[
+          { id: 'ALL', label: 'All Learning Activity', icon: BookOpen },
+          { id: 'VIDEOS', label: 'Teaching Videos', icon: Video, badge: studentVideos.length },
+          { id: 'MATERIALS', label: 'Study Materials & Slides', icon: FileText, badge: studentDocs.length },
+          { id: 'ASSIGNMENTS', label: 'Assignments', icon: FileCheck2 },
+          { id: 'QUIZZES', label: 'Online Quizzes', icon: Award, badge: studentQuizzes.length }
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3.5 py-2 rounded-xl font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{tab.label}</span>
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300'
+                  }`}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Embedded YouTube Player Modal / In-Page Section */}
+      {activeVideo && (
+        <div className="animate-in fade-in">
+          <YouTubeVideoPlayer
+            videoId={activeVideo.youtubeVideoId || ''}
+            title={activeVideo.title}
+            description={activeVideo.description}
+            courseTitle={courses.find((c) => c.id === activeVideo.courseId)?.title}
+            moduleName={activeVideo.moduleName}
+            onClose={() => setActiveVideo(null)}
+          />
+        </div>
+      )}
+
+      {/* Teaching Videos Showcase (Rendered when in 'ALL' or 'VIDEOS' tab) */}
+      {(activeTab === 'ALL' || activeTab === 'VIDEOS') && studentVideos.length > 0 && (
+        <div className="p-5 rounded-2xl glass-panel space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+              <Video className="w-4 h-4 text-rose-400" />
+              <span>Assigned Subject Teaching Videos</span>
+            </h3>
+            <span className="text-xs text-slate-400">
+              {studentVideos.length} Curated Lecture Video{studentVideos.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {studentVideos.map((vid) => {
+              const course = courses.find((c) => c.id === vid.courseId);
+
+              return (
+                <div
+                  key={vid.id}
+                  className="rounded-xl glass-card border border-slate-700/60 overflow-hidden flex flex-col justify-between hover:border-rose-500/40 transition-colors"
+                >
+                  <div>
+                    <div className="relative aspect-video bg-black group overflow-hidden">
+                      {vid.thumbnailUrl ? (
+                        <img
+                          src={vid.thumbnailUrl}
+                          alt={vid.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-600">
+                          <Video className="w-10 h-10" />
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 bg-slate-950/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setActiveVideo(vid)}
+                          className="px-4 py-2 rounded-xl bg-rose-600 text-white font-semibold text-xs flex items-center gap-1.5 shadow-lg shadow-rose-600/40 cursor-pointer"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Watch Lecture</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono font-semibold">
+                          {course?.code}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{vid.moduleName || 'Unit 1'}</span>
+                      </div>
+                      <h4 className="text-xs font-bold text-white line-clamp-1">{vid.title}</h4>
+                      {vid.description && (
+                        <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                          {vid.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-900/60 border-t border-slate-800 flex items-center justify-between text-xs">
+                    <span className="text-[10px] text-slate-500">Instructor: {course?.facultyName}</span>
+                    <button
+                      onClick={() => setActiveVideo(vid)}
+                      className="text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Play className="w-3 h-3 fill-current" />
+                      <span>Watch</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Two Column Grid: Assignments & Enrolled Courses/Quizzes */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Assignments Panel */}
         <div className="p-5 rounded-2xl glass-panel space-y-4">
@@ -190,6 +406,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     </div>
                   </div>
 
+                  {submission?.feedback && (
+                    <div className="p-2 rounded bg-indigo-950/40 border border-indigo-500/20 text-xs text-indigo-200">
+                      <span className="font-semibold block text-[10px] text-indigo-400">Instructor Feedback:</span>
+                      {submission.feedback}
+                    </div>
+                  )}
+
                   {selectedAsgId === asg.id && (
                     <form onSubmit={handleUploadSubmit} className="pt-2 border-t border-slate-700 flex gap-2">
                       <input
@@ -213,7 +436,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         </div>
 
-        {/* Enrolled Courses & Quizzes */}
+        {/* Quizzes & Study Materials */}
         <div className="space-y-6">
           {/* Online Quizzes */}
           <div className="p-5 rounded-2xl glass-panel space-y-4">
@@ -223,7 +446,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </h3>
 
             <div className="space-y-3">
-              {quizzes.map((quiz) => {
+              {studentQuizzes.map((quiz) => {
                 const attempt = myQuizAttempts.find((qa) => qa.quizId === quiz.id);
 
                 return (
@@ -267,34 +490,49 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             </div>
           </div>
 
-          {/* Enrolled Courses */}
+          {/* Enrolled Subjects & Reading Materials */}
           <div className="p-5 rounded-2xl glass-panel space-y-4">
             <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-indigo-400" />
-              <span>Enrolled Subjects</span>
+              <span>Study Notes & Reference Documents</span>
             </h3>
 
-            <div className="space-y-3">
-              {courses.map((c) => (
-                <div
-                  key={c.id}
-                  className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-white">{c.title}</span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono">
-                        {c.code}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400 mt-1">Instructor: {c.facultyName}</div>
-                    <div className="text-[10px] text-slate-500">{c.schedule} • {c.room}</div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xs font-semibold text-slate-300">{c.credits} Credits</span>
-                  </div>
+            <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+              {studentDocs.length === 0 ? (
+                <div className="text-xs text-slate-500 py-3 text-center">
+                  No reference slides uploaded yet for enrolled courses.
                 </div>
-              ))}
+              ) : (
+                studentDocs.map((doc) => {
+                  const course = courses.find((c) => c.id === doc.courseId);
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className="p-3 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between text-xs"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white">{doc.title}</span>
+                          <span className="text-[10px] text-indigo-400 font-mono">[{course?.code}]</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {doc.type} • {doc.size || '2.5 MB'} • {doc.moduleName || 'Unit 1'}
+                        </div>
+                      </div>
+
+                      <a
+                        href={doc.url || doc.fileUrl || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 text-xs font-semibold cursor-pointer"
+                      >
+                        Download
+                      </a>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

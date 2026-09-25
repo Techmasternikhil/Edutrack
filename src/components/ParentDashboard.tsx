@@ -15,6 +15,7 @@ import {
   Clock,
   BookOpen
 } from 'lucide-react';
+import { APP_CONFIG } from '../config/constants';
 import {
   ResponsiveContainer,
   BarChart,
@@ -213,13 +214,13 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
             <div className="text-xs text-slate-400 font-medium">Attendance Rate</div>
             <div className="text-2xl font-black text-indigo-400 mt-0.5">{attendanceRate}%</div>
             <div className="text-[10px] text-slate-400 font-medium">
-              {attendanceRate < 75 ? (
+              {attendanceRate < APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD ? (
                 <span className="text-rose-400 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Below 75% Requirement
+                  <AlertTriangle className="w-3 h-3" /> Below {APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD}% Requirement
                 </span>
               ) : (
                 <span className="text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Compliant (75%+ Threshold)
+                  <CheckCircle2 className="w-3 h-3" /> Compliant ({APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD}%+ Threshold)
                 </span>
               )}
             </div>
