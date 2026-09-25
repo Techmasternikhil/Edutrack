@@ -68,6 +68,89 @@ export function App() {
     } catch (e) {}
   };
 
+  // Self-registration for Teacher, Student, Parent
+  const handleRegisterUser = (data: {
+    name: string;
+    email: string;
+    role: UserRole;
+    department?: string;
+    regNumber?: string;
+    childStudentIds?: string[];
+  }): { success: boolean; message: string } => {
+    // Collision check
+    const existing = users.find((u) => u.email.toLowerCase() === data.email.toLowerCase());
+    if (existing) {
+      return { success: false, message: 'An account with this email address already exists.' };
+    }
+
+    const newUser: User = {
+      id: `usr-${Date.now()}`,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      status: 'PENDING', // Requires Admin approval
+      department: data.department,
+      regNumber: data.regNumber,
+      childStudentIds: data.childStudentIds,
+      semester: data.role === 'STUDENT' ? 1 : undefined,
+      gpa: data.role === 'STUDENT' ? 3.50 : undefined,
+      avatarUrl: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 100000000)}?w=150&auto=format&fit=crop&q=80`
+    };
+
+    setUsers((prev) => [...prev, newUser]);
+
+    // Add alert notification for Admin
+    const notif: Notification = {
+      id: `notif-${Date.now()}`,
+      title: 'New Account Pending Approval',
+      message: `${newUser.name} registered as ${newUser.role} (${newUser.email}).`,
+      type: 'SYSTEM',
+      createdAt: new Date().toISOString(),
+      isRead: false
+    };
+    setNotifications((prev) => [notif, ...prev]);
+
+    // Sync with backend API
+    fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).catch((err) => console.log('Backend signup sync skipped:', err));
+
+    return {
+      success: true,
+      message: `Registration submitted! Your ${data.role} account is now pending Administrator approval.`
+    };
+  };
+
+  // Admin approves or declines account
+  const handleApproveUser = (userId: string, status: 'APPROVED' | 'REJECTED') => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, status } : u))
+    );
+
+    // Sync with backend API
+    fetch(`/api/users/${userId}/approval`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, reviewedBy: currentUser?.name || 'Administrator' })
+    }).catch((err) => console.log('Backend approval sync skipped:', err));
+
+    // Notify user
+    const target = users.find((u) => u.id === userId);
+    if (target) {
+      const notif: Notification = {
+        id: `notif-${Date.now()}`,
+        title: `Account Registration ${status === 'APPROVED' ? 'Approved' : 'Declined'}`,
+        message: `Account for ${target.name} (${target.email}) was ${status.toLowerCase()} by Administrator.`,
+        type: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        isRead: false
+      };
+      setNotifications((prev) => [notif, ...prev]);
+    }
+  };
+
   // Sync initial state from backend on mount if server is running
   useEffect(() => {
     fetch('/api/health')
@@ -246,7 +329,13 @@ export function App() {
 
   // If not logged in, present secure multi-role login barrier
   if (!currentUser) {
-    return <LoginScreen users={users} onLogin={handleLogin} />;
+    return (
+      <LoginScreen
+        users={users}
+        onLogin={handleLogin}
+        onRegister={handleRegisterUser}
+      />
+    );
   }
 
   return (
@@ -342,6 +431,7 @@ export function App() {
             courses={courses}
             submissions={submissions}
             parentReviews={parentReviews}
+            onApproveUser={handleApproveUser}
           />
         )}
       </div>

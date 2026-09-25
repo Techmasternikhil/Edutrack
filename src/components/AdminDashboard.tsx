@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, Course, ParentReview, Submission } from '../types';
 import {
   Users,
@@ -8,7 +8,12 @@ import {
   HeartHandshake,
   MessageSquareQuote,
   TrendingUp,
-  Server
+  Server,
+  UserCheck,
+  Check,
+  X,
+  Clock,
+  AlertCircle
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -16,6 +21,7 @@ interface AdminDashboardProps {
   courses: Course[];
   submissions: Submission[];
   parentReviews: ParentReview[];
+  onApproveUser?: (userId: string, status: 'APPROVED' | 'REJECTED') => void;
   onOpenOracleSchemaModal?: () => void;
 }
 
@@ -23,15 +29,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   users,
   courses,
   submissions,
-  parentReviews
+  parentReviews,
+  onApproveUser
 }) => {
-  const studentsCount = users.filter((u) => u.role === 'STUDENT').length;
-  const facultyCount = users.filter((u) => u.role === 'FACULTY').length;
-  const parentCount = users.filter((u) => u.role === 'PARENT').length;
+  const [filterRole, setFilterRole] = useState<string>('ALL');
+
+  const pendingUsers = users.filter((u) => u.status === 'PENDING');
+  const approvedUsers = users.filter((u) => !u.status || u.status === 'APPROVED');
+  const studentsCount = approvedUsers.filter((u) => u.role === 'STUDENT').length;
+  const facultyCount = approvedUsers.filter((u) => u.role === 'FACULTY').length;
+  const parentCount = approvedUsers.filter((u) => u.role === 'PARENT').length;
   const totalCourses = courses.length;
+
+  const filteredUsers = filterRole === 'ALL'
+    ? users
+    : users.filter((u) => u.role === filterRole);
 
   return (
     <div className="space-y-6 animate-in fade-in">
+      {/* Top Banner */}
       <div className="p-6 rounded-2xl glass-panel bg-gradient-to-r from-rose-950/30 via-slate-900 to-indigo-950/30 border border-rose-500/20">
         <div className="flex items-center gap-2 text-rose-400 text-xs font-semibold uppercase tracking-wider">
           <ShieldAlert className="w-4 h-4" />
@@ -51,7 +67,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div>
             <span className="text-xs text-slate-400 font-medium">Enrolled Students</span>
             <div className="text-2xl font-black text-emerald-400 mt-1">{studentsCount}</div>
-            <span className="text-[10px] text-slate-400">Undergraduate & Graduate</span>
+            <span className="text-[10px] text-slate-400">Verified Learners</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
             <Users className="w-5 h-5 text-emerald-400" />
@@ -62,7 +78,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div>
             <span className="text-xs text-slate-400 font-medium">Faculty Members</span>
             <div className="text-2xl font-black text-indigo-400 mt-1">{facultyCount}</div>
-            <span className="text-[10px] text-slate-400">Department of Computer Science</span>
+            <span className="text-[10px] text-slate-400">Department Faculty</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-indigo-400" />
@@ -82,27 +98,116 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
         <div className="p-4 rounded-xl glass-card flex items-center justify-between">
           <div>
-            <span className="text-xs text-slate-400 font-medium">Active Courses</span>
-            <div className="text-2xl font-black text-amber-400 mt-1">{totalCourses}</div>
-            <span className="text-[10px] text-slate-400">Semester 4 Curricula</span>
+            <span className="text-xs text-slate-400 font-medium">Pending Approvals</span>
+            <div className="text-2xl font-black text-amber-400 mt-1">{pendingUsers.length}</div>
+            <span className="text-[10px] text-amber-400/80 font-medium">Require Verification</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-            <Activity className="w-5 h-5 text-amber-400" />
+            <UserCheck className="w-5 h-5 text-amber-400" />
           </div>
         </div>
       </div>
+
+      {/* Pending Account Registration Approvals Queue */}
+      {pendingUsers.length > 0 && (
+        <div className="p-5 rounded-2xl glass-panel border border-amber-500/30 bg-amber-950/10 space-y-4 animate-in fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-400">
+              <Clock className="w-4 h-4" />
+              <h3 className="text-sm font-bold text-white">
+                Pending Registration Verification Queue ({pendingUsers.length})
+              </h3>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              Action Required
+            </span>
+          </div>
+          <p className="text-xs text-slate-400">
+            Review self-registered applications from teachers, students, and parents before granting access to institutional data.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {pendingUsers.map((u) => (
+              <div
+                key={u.id}
+                className="p-4 rounded-xl bg-slate-900/80 border border-slate-700/80 flex items-center justify-between gap-3 shadow-md"
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <img
+                    src={u.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}
+                    alt={u.name}
+                    className="w-10 h-10 rounded-xl object-cover ring-1 ring-amber-500/40 shrink-0"
+                  />
+                  <div className="truncate">
+                    <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>{u.name}</span>
+                      <span className="text-[10px] px-2 py-0.2 rounded font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                        {u.role}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 font-mono truncate">{u.email}</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      {u.department && `Dept: ${u.department} • `}
+                      {u.regNumber && `Reg: ${u.regNumber} • `}
+                      {u.childStudentIds && `Linked Student: ${u.childStudentIds.join(', ')}`}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onApproveUser && onApproveUser(u.id, 'APPROVED')}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md transition-colors cursor-pointer"
+                    title="Approve Account"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Approve</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onApproveUser && onApproveUser(u.id, 'REJECTED')}
+                    className="p-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs transition-colors cursor-pointer"
+                    title="Decline Account"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Two Column Layout: User Roster & Parent Oversight Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* User Directory */}
         <div className="lg:col-span-2 p-5 rounded-2xl glass-panel">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-200">Registered Accounts & Roles</h3>
-            <span className="text-xs text-slate-400">Total: {users.length}</span>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2 mb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-200">Registered Accounts & Roles Directory</h3>
+              <p className="text-[11px] text-slate-400">Total institutional accounts: {users.length}</p>
+            </div>
+
+            {/* Role Filter Pills */}
+            <div className="flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800 self-start sm:self-auto">
+              {(['ALL', 'STUDENT', 'FACULTY', 'PARENT', 'ADMIN'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setFilterRole(r)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                    filterRole === r ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="divide-y divide-slate-800">
-            {users.map((u) => (
+          <div className="divide-y divide-slate-800/80 max-h-96 overflow-y-auto pr-1">
+            {filteredUsers.map((u) => (
               <div key={u.id} className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <img
@@ -111,7 +216,19 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-700"
                   />
                   <div>
-                    <div className="text-xs font-semibold text-slate-200">{u.name}</div>
+                    <div className="text-xs font-semibold text-slate-200 flex items-center gap-2">
+                      <span>{u.name}</span>
+                      {u.status === 'PENDING' && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30">
+                          Pending Approval
+                        </span>
+                      )}
+                      {u.status === 'REJECTED' && (
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30">
+                          Declined
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] text-slate-400">{u.email}</div>
                   </div>
                 </div>
@@ -153,7 +270,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
             {parentReviews.map((pr) => (
               <div
                 key={pr.id}
