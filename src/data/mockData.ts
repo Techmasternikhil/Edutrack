@@ -53,11 +53,11 @@ export const mockUsers: User[] = [
   },
   {
     id: 'usr-parent-1',
-    name: 'Sarah Vance Rivera',
-    email: 'parent.rivera@gmail.com',
+    name: 'Raveendra',
+    email: 'raveendra@edutrack.edu',
     role: 'PARENT',
     childStudentIds: ['usr-stu-1'],
-    avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80'
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
   },
   {
     id: 'usr-parent-2',
@@ -339,7 +339,7 @@ export const mockParentReviews: ParentReview[] = [
   {
     id: 'prev-1',
     parentId: 'usr-parent-1',
-    parentName: 'Sarah Vance Rivera',
+    parentName: 'Raveendra',
     studentId: 'usr-stu-1',
     studentName: 'Alex Rivera',
     courseId: 'crs-1',
@@ -348,13 +348,13 @@ export const mockParentReviews: ParentReview[] = [
     title: 'Great progress in Distributed Systems',
     message: 'Alex really enjoyed the Raft consensus simulation assignment. Thank you Prof. Reed for the detailed feedback!',
     status: 'ACKNOWLEDGED',
-    facultyReply: 'Thank you Sarah! Alex demonstrated exceptional insight into leader election failover scenarios.',
+    facultyReply: 'Thank you Raveendra! Alex demonstrated exceptional insight into leader election failover scenarios.',
     createdAt: '2026-09-20T16:00:00Z'
   },
   {
     id: 'prev-2',
     parentId: 'usr-parent-1',
-    parentName: 'Sarah Vance Rivera',
+    parentName: 'Raveendra',
     studentId: 'usr-stu-1',
     studentName: 'Alex Rivera',
     courseId: 'crs-2',
