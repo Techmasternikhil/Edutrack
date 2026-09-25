@@ -94,7 +94,50 @@ CREATE TABLE courses (
     faculty_id VARCHAR2(50) REFERENCES faculty(faculty_id)
 );
 
--- 7. ENROLLMENTS TABLE
+-- 7. ACADEMIC CLASSES & CLASS TEACHERS TABLE
+CREATE TABLE academic_classes (
+    class_id VARCHAR2(50) PRIMARY KEY,
+    class_name VARCHAR2(150) NOT NULL,
+    section VARCHAR2(20) NOT NULL,
+    academic_year VARCHAR2(20) NOT NULL,
+    department VARCHAR2(100),
+    semester NUMBER(2) NOT NULL,
+    class_teacher_id VARCHAR2(50) REFERENCES faculty(faculty_id)
+);
+
+-- 8. TWO-STAGE REGISTRATION REQUESTS TABLE
+CREATE TABLE registration_requests (
+    registration_id VARCHAR2(50) PRIMARY KEY,
+    user_id VARCHAR2(50) REFERENCES users(user_id) ON DELETE CASCADE,
+    applicant_name VARCHAR2(100) NOT NULL,
+    applicant_email VARCHAR2(100) NOT NULL,
+    requested_role VARCHAR2(20) CHECK (requested_role IN ('STUDENT', 'PARENT')),
+    class_id VARCHAR2(50) REFERENCES academic_classes(class_id),
+    class_teacher_id VARCHAR2(50) REFERENCES faculty(faculty_id),
+    student_id VARCHAR2(50) REFERENCES students(student_id),
+    relationship VARCHAR2(30),
+    status VARCHAR2(30) DEFAULT 'PENDING_TEACHER_REVIEW' CHECK (status IN (
+        'PENDING_TEACHER_REVIEW',
+        'TEACHER_CONFIRMED',
+        'PENDING_ADMIN_REVIEW',
+        'APPROVED',
+        'REJECTED_BY_TEACHER',
+        'REJECTED_BY_ADMIN'
+    )),
+    teacher_reviewed_by VARCHAR2(100),
+    teacher_reviewed_at TIMESTAMP,
+    teacher_review_reason CLOB,
+    admin_reviewed_by VARCHAR2(100),
+    admin_reviewed_at TIMESTAMP,
+    admin_review_reason CLOB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_reg_class_teacher ON registration_requests(class_teacher_id);
+CREATE INDEX idx_reg_status ON registration_requests(status);
+
+-- 9. ENROLLMENTS TABLE
 CREATE TABLE enrollments (
     enrollment_id VARCHAR2(50) PRIMARY KEY,
     student_id VARCHAR2(50) REFERENCES students(student_id),

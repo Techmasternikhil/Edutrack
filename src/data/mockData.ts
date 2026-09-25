@@ -9,8 +9,85 @@ import {
   AttendanceRecord,
   Notification,
   AuditLog,
-  ParentReview
+  ParentReview,
+  AcademicClass,
+  RegistrationRequest
 } from '../types';
+
+export const mockAcademicClasses: AcademicClass[] = [
+  {
+    id: 'cls-cse-4a',
+    className: 'B.Tech Computer Science — Semester 4',
+    section: 'Section A',
+    academicYear: '2026-2027',
+    department: 'Computer Science',
+    semester: 4,
+    classTeacherId: 'usr-fac-1',
+    classTeacherName: 'Prof. Evelyn Reed',
+    classTeacherEmail: 'evelyn.reed@edutrack.edu'
+  },
+  {
+    id: 'cls-cse-4b',
+    className: 'B.Tech Computer Science — Semester 4',
+    section: 'Section B',
+    academicYear: '2026-2027',
+    department: 'Computer Science',
+    semester: 4,
+    classTeacherId: 'usr-fac-1',
+    classTeacherName: 'Prof. Evelyn Reed',
+    classTeacherEmail: 'evelyn.reed@edutrack.edu'
+  },
+  {
+    id: 'cls-it-6a',
+    className: 'B.Tech Information Technology — Semester 6',
+    section: 'Section A',
+    academicYear: '2026-2027',
+    department: 'Information Technology',
+    semester: 6,
+    classTeacherId: 'usr-fac-2',
+    classTeacherName: 'Dr. Alan Turing',
+    classTeacherEmail: 'alan.turing@edutrack.edu'
+  }
+];
+
+export const mockRegistrationRequests: RegistrationRequest[] = [
+  {
+    id: 'reg-req-1',
+    userId: 'usr-stu-pending-1',
+    applicantName: 'Arun Kumar',
+    applicantEmail: 'arun.kumar@student.edutrack.edu',
+    requestedRole: 'STUDENT',
+    classId: 'cls-cse-4a',
+    className: 'B.Tech Computer Science — Semester 4 (Sec A)',
+    classSection: 'Section A',
+    classTeacherId: 'usr-fac-1',
+    classTeacherName: 'Prof. Evelyn Reed',
+    regNumber: 'CS-2026-089',
+    department: 'Computer Science',
+    status: 'PENDING_TEACHER_REVIEW',
+    createdAt: '2026-09-24T09:30:00Z'
+  },
+  {
+    id: 'reg-req-2',
+    userId: 'usr-parent-pending-1',
+    applicantName: 'Raj Kumar',
+    applicantEmail: 'raj.kumar@gmail.com',
+    requestedRole: 'PARENT',
+    classId: 'cls-cse-4a',
+    className: 'B.Tech Computer Science — Semester 4 (Sec A)',
+    classSection: 'Section A',
+    classTeacherId: 'usr-fac-1',
+    classTeacherName: 'Prof. Evelyn Reed',
+    studentId: 'usr-stu-1',
+    studentName: 'Alex Rivera',
+    relationship: 'Father',
+    status: 'TEACHER_CONFIRMED',
+    teacherReviewedBy: 'Prof. Evelyn Reed',
+    teacherReviewedAt: '2026-09-24T14:15:00Z',
+    teacherReviewReason: 'Verified parent relationship documents and student record matching.',
+    createdAt: '2026-09-23T11:00:00Z'
+  }
+];
 
 export const mockUsers: User[] = [
   {
@@ -18,6 +95,8 @@ export const mockUsers: User[] = [
     name: 'Dr. Arthur Mitchell',
     email: 'admin@edutrack.edu',
     role: 'ADMIN',
+    status: 'APPROVED',
+    accountStatus: 'ACTIVE',
     department: 'University Administration',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
   },
@@ -26,7 +105,12 @@ export const mockUsers: User[] = [
     name: 'Prof. Evelyn Reed',
     email: 'evelyn.reed@edutrack.edu',
     role: 'FACULTY',
+    status: 'APPROVED',
+    accountStatus: 'ACTIVE',
     department: 'Computer Science',
+    isClassTeacher: true,
+    assignedClassId: 'cls-cse-4a',
+    assignedClassName: 'B.Tech Computer Science — Sem 4 (Sec A)',
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -34,8 +118,12 @@ export const mockUsers: User[] = [
     name: 'Alex Rivera',
     email: 'alex.rivera@student.edutrack.edu',
     role: 'STUDENT',
+    status: 'APPROVED',
+    accountStatus: 'ACTIVE',
     department: 'Computer Science',
     regNumber: 'CS-2024-041',
+    classId: 'cls-cse-4a',
+    className: 'B.Tech Computer Science — Sem 4 (Sec A)',
     semester: 4,
     gpa: 3.82,
     avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80'
@@ -45,8 +133,12 @@ export const mockUsers: User[] = [
     name: 'Sophia Chen',
     email: 'sophia.chen@student.edutrack.edu',
     role: 'STUDENT',
+    status: 'APPROVED',
+    accountStatus: 'ACTIVE',
     department: 'Computer Science',
     regNumber: 'CS-2024-042',
+    classId: 'cls-cse-4a',
+    className: 'B.Tech Computer Science — Sem 4 (Sec A)',
     semester: 4,
     gpa: 3.91,
     avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80'
@@ -56,6 +148,8 @@ export const mockUsers: User[] = [
     name: 'Raveendra',
     email: 'raveendra@edutrack.edu',
     role: 'PARENT',
+    status: 'APPROVED',
+    accountStatus: 'ACTIVE',
     childStudentIds: ['usr-stu-1'],
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
   },
@@ -64,6 +158,8 @@ export const mockUsers: User[] = [
     name: 'David Chen',
     email: 'david.chen@outlook.com',
     role: 'PARENT',
+    status: 'APPROVED',
+    accountStatus: 'ACTIVE',
     childStudentIds: ['usr-stu-2'],
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
   }

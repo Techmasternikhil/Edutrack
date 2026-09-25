@@ -14,7 +14,9 @@ import {
   mockAttendance,
   mockNotifications,
   mockAuditLogs,
-  mockParentReviews
+  mockParentReviews,
+  mockAcademicClasses,
+  mockRegistrationRequests
 } from './src/data/mockData';
 
 const app = express();
@@ -34,6 +36,8 @@ let attendanceStore = [...mockAttendance];
 let notificationsStore = [...mockNotifications];
 let auditLogsStore = [...mockAuditLogs];
 let parentReviewsStore = [...mockParentReviews];
+let classesStore = [...mockAcademicClasses];
+let registrationRequestsStore = [...mockRegistrationRequests];
 
 // Helper to append audit log
 function addAuditLog(performedBy: string, role: any, action: string, details: string) {
@@ -99,16 +103,22 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
   });
 });
 
-// Self-service Registration / Signup Endpoint (Teacher, Student, Parent)
+// Academic Classes API
+app.get('/api/academic-classes', (req: Request, res: Response) => {
+  res.json(classesStore);
+});
+
+// Self-service Two-Stage Registration / Signup Endpoint (Student & Parent)
 app.post('/api/auth/signup', (req: Request, res: Response) => {
-  const { name, email, role, department, regNumber, childStudentIds } = req.body;
+  const { name, email, role, classId, regNumber, studentId, relationship, department } = req.body;
 
   if (!name || !email || !role) {
     return res.status(400).json({ error: 'Name, email, and role are required' });
   }
 
+  // Explicit Restriction 4: Cannot self-register as ADMIN
   if (role === 'ADMIN') {
-    return res.status(403).json({ error: 'Administrator accounts cannot be created via public registration' });
+    return res.status(403).json({ error: 'Prohibited: Administrator accounts cannot be self-registered publicly.' });
   }
 
   // Check email collision
@@ -117,75 +127,335 @@ app.post('/api/auth/signup', (req: Request, res: Response) => {
     return res.status(409).json({ error: 'An account with this email already exists' });
   }
 
+  // Determine Class and Class Teacher
+  let targetClass = classesStore.find((c) => c.id === classId);
+
+  // For parents: lookup student and their class if classId not provided directly
+  let linkedStudent: any = null;
+  if (role === 'PARENT') {
+    if (studentId) {
+      linkedStudent = usersStore.find((u) => u.id === studentId || u.regNumber === studentId);
+      if (!linkedStudent) {
+        return res.status(404).json({ error: 'Specified student was not found in institutional records.' });
+      }
+      if (linkedStudent.classId) {
+        targetClass = classesStore.find((c) => c.id === linkedStudent.classId);
+      }
+    }
+    if (!targetClass) {
+      targetClass = classesStore[0]; // Fallback to first class in department
+    }
+  }
+
+  if (role === 'STUDENT' && !targetClass) {
+    targetClass = classesStore[0];
+  }
+
+  const assignedTeacherId = targetClass?.classTeacherId || 'usr-fac-1';
+  const assignedTeacherName = targetClass?.classTeacherName || 'Prof. Evelyn Reed';
+
+  const newUserId = `usr-${Date.now()}`;
   const newUser: any = {
-    id: `usr-${Date.now()}`,
+    id: newUserId,
     name: name.trim(),
     email: email.trim().toLowerCase(),
     role,
-    status: 'PENDING', // Requires Admin approval
+    status: 'PENDING',
+    accountStatus: 'PENDING', // Inactive until both stages complete
     createdAt: new Date().toISOString(),
     avatarUrl: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 100000000)}?w=150&auto=format&fit=crop&q=80`
   };
 
-  if (role === 'FACULTY') {
-    newUser.department = department || 'General Academics';
-  } else if (role === 'STUDENT') {
-    newUser.department = department || 'Computer Science';
-    newUser.regNumber = regNumber || `STU-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
-    newUser.semester = 1;
+  if (role === 'STUDENT') {
+    newUser.department = targetClass?.department || department || 'Computer Science';
+    newUser.regNumber = regNumber || `CS-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
+    newUser.classId = targetClass?.id;
+    newUser.className = targetClass ? `${targetClass.className} (${targetClass.section})` : 'Class 4A';
+    newUser.semester = targetClass?.semester || 1;
     newUser.gpa = 3.50;
   } else if (role === 'PARENT') {
-    newUser.childStudentIds = childStudentIds || ['usr-stu-1'];
+    newUser.childStudentIds = linkedStudent ? [linkedStudent.id] : (req.body.childStudentIds || ['usr-stu-1']);
+  } else if (role === 'FACULTY') {
+    newUser.department = department || 'General Academics';
   }
 
   usersStore.push(newUser);
 
-  // Notify Administrators of pending registration
+  // Create Registration Request Record for Two-Stage Verification
+  const regReqId = `reg-req-${Date.now()}`;
+  const regRequest: any = {
+    id: regReqId,
+    userId: newUserId,
+    applicantName: newUser.name,
+    applicantEmail: newUser.email,
+    requestedRole: role,
+    classId: targetClass?.id || 'cls-cse-4a',
+    className: targetClass ? `${targetClass.className} (${targetClass.section})` : 'B.Tech CSE - 4A',
+    classSection: targetClass?.section || 'Section A',
+    classTeacherId: assignedTeacherId,
+    classTeacherName: assignedTeacherName,
+    regNumber: newUser.regNumber,
+    department: newUser.department,
+    studentId: linkedStudent?.id,
+    studentName: linkedStudent?.name,
+    relationship: relationship || 'Father',
+    status: 'PENDING_TEACHER_REVIEW',
+    createdAt: new Date().toISOString()
+  };
+
+  registrationRequestsStore.unshift(regRequest);
+
+  // Notify the assigned Class Teacher
   notificationsStore.unshift({
     id: `notif-${Date.now()}`,
-    title: 'New Account Awaiting Approval',
-    message: `${newUser.name} registered as ${newUser.role} (${newUser.email}). Review and approve in Admin Console.`,
+    userId: assignedTeacherId,
+    title: `New ${role} Registration Request`,
+    message: `${newUser.name} registered for ${regRequest.className}. Please review and verify the request.`,
     type: 'SYSTEM',
     createdAt: new Date().toISOString(),
     isRead: false
   });
 
-  addAuditLog(newUser.email, newUser.role, 'USER_SIGNUP_PENDING', `Self-registered new ${newUser.role} account awaiting admin verification`);
+  addAuditLog(newUser.email, newUser.role, 'REGISTRATION_SUBMITTED', `Submitted ${role} registration assigned to Class Teacher ${assignedTeacherName} (${regRequest.className})`);
 
   res.status(201).json({
-    message: 'Registration submitted successfully. Your account is pending Administrator review and approval.',
-    user: newUser
+    message: 'Registration submitted successfully. Your request is waiting for Class Teacher verification before administrative approval.',
+    user: newUser,
+    registrationRequest: regRequest
   });
 });
 
-// Admin Approval / Rejection Endpoint
-app.put('/api/users/:id/approval', (req: Request, res: Response) => {
-  const { status, reviewedBy } = req.body; // 'APPROVED' or 'REJECTED'
-  const index = usersStore.findIndex((u) => u.id === req.params.id);
+// Teacher Registration Requests API
+app.get('/api/faculty/registration-requests', (req: Request, res: Response) => {
+  const { teacherId } = req.query;
+  let results = [...registrationRequestsStore];
+  if (teacherId) {
+    results = results.filter((r) => r.classTeacherId === teacherId);
+  }
+  res.json(results);
+});
+
+// Teacher Stage 1: Confirm Registration
+app.post('/api/faculty/registration-requests/:id/confirm', (req: Request, res: Response) => {
+  const { facultyId, teacherId, facultyName, teacherName, reason, userRole } = req.body;
+  const currentTeacherId = teacherId || facultyId;
+  const currentTeacherName = teacherName || facultyName || 'Class Teacher';
+
+  const index = registrationRequestsStore.findIndex((r) => r.id === req.params.id);
 
   if (index === -1) {
-    return res.status(404).json({ error: 'User not found' });
+    return res.status(404).json({ error: 'Registration request not found' });
   }
 
-  if (!['APPROVED', 'REJECTED'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid status. Must be APPROVED or REJECTED' });
+  const reqItem = registrationRequestsStore[index];
+
+  // Authorization: Must be assigned class teacher
+  if (!currentTeacherId || reqItem.classTeacherId !== currentTeacherId) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned as the Class Teacher for this class.' });
   }
 
-  usersStore[index].status = status;
+  // State Transition Validation: Only PENDING_TEACHER_REVIEW can be confirmed
+  if (reqItem.status !== 'PENDING_TEACHER_REVIEW') {
+    return res.status(400).json({ error: `Invalid transition. Request is in status ${reqItem.status}, not PENDING_TEACHER_REVIEW.` });
+  }
 
+  reqItem.status = 'PENDING_ADMIN_REVIEW';
+  reqItem.teacherReviewedBy = currentTeacherName;
+  reqItem.teacherReviewedAt = new Date().toISOString();
+  reqItem.teacherReviewReason = reason || 'Verified academic credentials and class roster entry.';
+  reqItem.updatedAt = new Date().toISOString();
+
+  // Notify Administrators
   notificationsStore.unshift({
     id: `notif-${Date.now()}`,
-    userId: usersStore[index].id,
-    title: `Account Registration ${status === 'APPROVED' ? 'Approved' : 'Declined'}`,
-    message: `Account for ${usersStore[index].name} (${usersStore[index].email}) was ${status.toLowerCase()} by Administrator.`,
+    title: 'Registration Ready for Administrative Approval',
+    message: `${reqItem.applicantName} (${reqItem.requestedRole}) verified by Class Teacher ${reqItem.teacherReviewedBy}. Ready for final admin approval.`,
     type: 'SYSTEM',
     createdAt: new Date().toISOString(),
     isRead: false
   });
 
-  addAuditLog(reviewedBy || 'Admin', 'ADMIN', `USER_${status}`, `${status} registration for ${usersStore[index].name} (${usersStore[index].email})`);
+  addAuditLog(currentTeacherName, 'FACULTY', 'REGISTRATION_TEACHER_CONFIRMED', `Class Teacher confirmed ${reqItem.requestedRole} registration for ${reqItem.applicantName}`);
 
-  res.json({ success: true, user: usersStore[index] });
+  res.json({ success: true, registrationRequest: reqItem });
+});
+
+// Teacher Stage 1: Reject Registration
+app.post('/api/faculty/registration-requests/:id/reject', (req: Request, res: Response) => {
+  const { facultyId, teacherId, facultyName, teacherName, reason } = req.body;
+  const currentTeacherId = teacherId || facultyId;
+  const currentTeacherName = teacherName || facultyName || 'Class Teacher';
+
+  const index = registrationRequestsStore.findIndex((r) => r.id === req.params.id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Registration request not found' });
+  }
+
+  const reqItem = registrationRequestsStore[index];
+
+  if (!currentTeacherId || reqItem.classTeacherId !== currentTeacherId) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned as the Class Teacher for this class.' });
+  }
+
+  if (reqItem.status !== 'PENDING_TEACHER_REVIEW') {
+    return res.status(400).json({ error: `Invalid transition. Cannot reject request in status ${reqItem.status}.` });
+  }
+
+  if (!reason || !reason.trim()) {
+    return res.status(400).json({ error: 'A specific reason is required to reject a registration.' });
+  }
+
+  reqItem.status = 'REJECTED_BY_TEACHER';
+  reqItem.teacherReviewedBy = currentTeacherName;
+  reqItem.teacherReviewedAt = new Date().toISOString();
+  reqItem.teacherReviewReason = reason.trim();
+  reqItem.updatedAt = new Date().toISOString();
+
+  // Update user account status
+  const userIdx = usersStore.findIndex((u) => u.id === reqItem.userId);
+  if (userIdx !== -1) {
+    usersStore[userIdx].status = 'REJECTED';
+    usersStore[userIdx].accountStatus = 'REJECTED';
+  }
+
+  addAuditLog(currentTeacherName, 'FACULTY', 'REGISTRATION_TEACHER_REJECTED', `Class Teacher rejected ${reqItem.requestedRole} registration for ${reqItem.applicantName}. Reason: ${reason}`);
+
+  res.json({ success: true, registrationRequest: reqItem });
+});
+
+// Admin Registration Requests API
+app.get('/api/admin/registration-requests', (req: Request, res: Response) => {
+  const { status } = req.query;
+  let results = [...registrationRequestsStore];
+  if (status) {
+    results = results.filter((r) => r.status === status);
+  }
+  res.json(results);
+});
+
+// Admin Stage 2: Final Approval
+app.post('/api/admin/registration-requests/:id/approve', (req: Request, res: Response) => {
+  const { adminName, adminRole, userRole, reason } = req.body;
+  const role = userRole || adminRole;
+  if (role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden: Only administrators can grant final registration approval.' });
+  }
+
+  const index = registrationRequestsStore.findIndex((r) => r.id === req.params.id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Registration request not found' });
+  }
+
+  const reqItem = registrationRequestsStore[index];
+
+  // State Transition Rule: Admin can approve ONLY when status is PENDING_ADMIN_REVIEW
+  if (reqItem.status !== 'PENDING_ADMIN_REVIEW') {
+    return res.status(400).json({
+      error: `Invalid transition. This registration is in status "${reqItem.status}" and has not completed Class Teacher verification.`
+    });
+  }
+
+  reqItem.status = 'APPROVED';
+  reqItem.adminReviewedBy = adminName || 'Administrator';
+  reqItem.adminReviewedAt = new Date().toISOString();
+  reqItem.adminReviewReason = reason || 'Institutional clearance approved.';
+  reqItem.updatedAt = new Date().toISOString();
+
+  // Transactionally activate user account
+  const userIdx = usersStore.findIndex((u) => u.id === reqItem.userId);
+  if (userIdx !== -1) {
+    usersStore[userIdx].status = 'APPROVED';
+    usersStore[userIdx].accountStatus = 'ACTIVE';
+  }
+
+  // Notify student/parent
+  notificationsStore.unshift({
+    id: `notif-${Date.now()}`,
+    userId: reqItem.userId,
+    title: 'Account Activated',
+    message: `Your ${reqItem.requestedRole} account has received final Administrator approval. You may now log in.`,
+    type: 'SYSTEM',
+    createdAt: new Date().toISOString(),
+    isRead: false
+  });
+
+  addAuditLog(adminName || 'Admin', 'ADMIN', 'REGISTRATION_ADMIN_APPROVED', `Admin completed final approval and activated account for ${reqItem.applicantName} (${reqItem.applicantEmail})`);
+
+  res.json({ success: true, registrationRequest: reqItem, user: userIdx !== -1 ? usersStore[userIdx] : null });
+});
+
+// Admin Stage 2: Final Rejection
+app.post('/api/admin/registration-requests/:id/reject', (req: Request, res: Response) => {
+  const { adminName, reason } = req.body;
+  const index = registrationRequestsStore.findIndex((r) => r.id === req.params.id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Registration request not found' });
+  }
+
+  const reqItem = registrationRequestsStore[index];
+
+  if (!reason || !reason.trim()) {
+    return res.status(400).json({ error: 'A specific reason is required to reject a registration.' });
+  }
+
+  reqItem.status = 'REJECTED_BY_ADMIN';
+  reqItem.adminReviewedBy = adminName || 'Administrator';
+  reqItem.adminReviewedAt = new Date().toISOString();
+  reqItem.adminReviewReason = reason.trim();
+  reqItem.updatedAt = new Date().toISOString();
+
+  const userIdx = usersStore.findIndex((u) => u.id === reqItem.userId);
+  if (userIdx !== -1) {
+    usersStore[userIdx].status = 'REJECTED';
+    usersStore[userIdx].accountStatus = 'REJECTED';
+  }
+
+  addAuditLog(adminName || 'Admin', 'ADMIN', 'REGISTRATION_ADMIN_REJECTED', `Admin rejected registration for ${reqItem.applicantName}. Reason: ${reason}`);
+
+  res.json({ success: true, registrationRequest: reqItem });
+});
+
+// Admin Creates Another Administrator (Security Verified: req.user role must be ADMIN)
+app.post('/api/admin/users/admin', (req: Request, res: Response) => {
+  const { creatorRole, creatorName, name, email, department } = req.body;
+
+  if (creatorRole !== 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden: Only authenticated administrators can create new administrator accounts.' });
+  }
+
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Administrator name and email are required.' });
+  }
+
+  const existing = usersStore.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+  if (existing) {
+    return res.status(409).json({ error: 'An account with this email already exists.' });
+  }
+
+  const newAdmin: any = {
+    id: `usr-admin-${Date.now()}`,
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+    role: 'ADMIN',
+    status: 'APPROVED',
+    accountStatus: 'ACTIVE',
+    department: department || 'University Administration',
+    createdAt: new Date().toISOString(),
+    avatarUrl: `https://images.unsplash.com/photo-${1534528741775 + Math.floor(Math.random() * 1000)}?w=150&auto=format&fit=crop&q=80`
+  };
+
+  usersStore.push(newAdmin);
+
+  addAuditLog(creatorName || 'Admin', 'ADMIN', 'ADMIN_CREATED_ADMIN', `Administrator created new Admin account for ${newAdmin.name} (${newAdmin.email})`);
+
+  res.status(201).json({
+    success: true,
+    message: `Administrator account for ${newAdmin.name} created successfully.`,
+    user: newAdmin
+  });
 });
 
 // Users / Students / Faculty API
@@ -442,6 +712,11 @@ app.get('/api/submissions', (req: Request, res: Response) => {
 });
 
 app.post('/api/submissions', (req: Request, res: Response) => {
+  const { userRole, studentRole } = req.body;
+  if (userRole === 'ADMIN' || studentRole === 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden: Administrator accounts are strictly prohibited from submitting coursework.' });
+  }
+
   const newSubmission = {
     id: `sub-${Date.now()}`,
     submittedAt: new Date().toISOString(),
@@ -620,10 +895,13 @@ app.delete('/api/quizzes/:id', (req: Request, res: Response) => {
 });
 
 app.post('/api/quizzes/:id/submit', (req: Request, res: Response) => {
+  const { studentId, studentName, answers, timeTakenSeconds, userRole } = req.body;
+  if (userRole === 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden: Administrator accounts are strictly prohibited from attempting quizzes.' });
+  }
+
   const quiz = quizzesStore.find((q) => q.id === req.params.id);
   if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
-
-  const { studentId, studentName, answers, timeTakenSeconds } = req.body;
   
   let score = 0;
   quiz.questions.forEach((q) => {

@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { User, UserRole, Course, CourseMaterial, Assignment, Submission, Quiz, QuizAttempt, AttendanceRecord, Notification, ParentReview } from './types';
+import {
+  User,
+  UserRole,
+  Course,
+  CourseMaterial,
+  Assignment,
+  Submission,
+  Quiz,
+  QuizAttempt,
+  AttendanceRecord,
+  Notification,
+  ParentReview,
+  AcademicClass,
+  RegistrationRequest
+} from './types';
 import {
   mockUsers,
   mockCourses,
@@ -10,7 +24,9 @@ import {
   mockQuizAttempts,
   mockAttendance,
   mockNotifications,
-  mockParentReviews
+  mockParentReviews,
+  mockAcademicClasses,
+  mockRegistrationRequests
 } from './data/mockData';
 import { Header } from './components/Header';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -33,6 +49,8 @@ import {
 
 export function App() {
   const [users, setUsers] = useState<User[]>(mockUsers);
+  const [academicClasses, setAcademicClasses] = useState<AcademicClass[]>(mockAcademicClasses);
+  const [registrationRequests, setRegistrationRequests] = useState<RegistrationRequest[]>(mockRegistrationRequests);
   // Persist session or require login
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
@@ -70,7 +88,7 @@ export function App() {
     } catch (e) {}
   };
 
-  // Self-registration for Teacher, Student, Parent
+  // Two-Stage Self-registration for Student, Parent, and Faculty
   const handleRegisterUser = (data: {
     name: string;
     email: string;
@@ -78,6 +96,12 @@ export function App() {
     department?: string;
     regNumber?: string;
     childStudentIds?: string[];
+    phone?: string;
+    classId?: string;
+    className?: string;
+    studentRegNumber?: string;
+    childName?: string;
+    relationship?: string;
   }): { success: boolean; message: string } => {
     // Collision check
     const existing = users.find((u) => u.email.toLowerCase() === data.email.toLowerCase());
@@ -85,15 +109,33 @@ export function App() {
       return { success: false, message: 'An account with this email address already exists.' };
     }
 
+    if (data.role === 'ADMIN') {
+      return { success: false, message: 'Administrator accounts cannot be self-registered.' };
+    }
+
+    // Determine assigned class teacher
+    let resolvedClass = academicClasses.find((c) => c.id === data.classId) || academicClasses[0];
+    if (data.role === 'PARENT' && data.childStudentIds && data.childStudentIds.length > 0) {
+      const child = users.find((u) => u.id === data.childStudentIds![0]);
+      if (child && child.classId) {
+        resolvedClass = academicClasses.find((c) => c.id === child.classId) || resolvedClass;
+      }
+    }
+
+    const newUserId = `usr-${Date.now()}`;
     const newUser: User = {
-      id: `usr-${Date.now()}`,
+      id: newUserId,
       name: data.name,
       email: data.email,
       role: data.role,
-      status: 'PENDING', // Requires Admin approval
+      status: 'PENDING',
+      accountStatus: 'PENDING',
       department: data.department,
-      regNumber: data.regNumber,
+      regNumber: data.regNumber || data.studentRegNumber,
       childStudentIds: data.childStudentIds,
+      classId: resolvedClass?.id,
+      className: resolvedClass?.name,
+      phone: data.phone,
       semester: data.role === 'STUDENT' ? 1 : undefined,
       gpa: data.role === 'STUDENT' ? 3.50 : undefined,
       avatarUrl: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 100000000)}?w=150&auto=format&fit=crop&q=80`
@@ -101,11 +143,38 @@ export function App() {
 
     setUsers((prev) => [...prev, newUser]);
 
-    // Add alert notification for Admin
+    // Create Two-Stage Registration Request
+    const reqStatus = (data.role === 'STUDENT' || data.role === 'PARENT')
+      ? 'PENDING_TEACHER_REVIEW'
+      : 'PENDING_ADMIN_REVIEW';
+
+    const newReq: RegistrationRequest = {
+      id: `reg-${Date.now()}`,
+      userId: newUserId,
+      userName: data.name,
+      userEmail: data.email,
+      requestedRole: data.role,
+      status: reqStatus,
+      classId: resolvedClass?.id,
+      className: resolvedClass?.name,
+      classTeacherId: resolvedClass?.classTeacherId,
+      classTeacherName: resolvedClass?.classTeacherName,
+      studentId: data.childStudentIds ? data.childStudentIds[0] : undefined,
+      childName: data.childName,
+      studentRegNumber: data.regNumber || data.studentRegNumber,
+      relationship: data.relationship,
+      phone: data.phone,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    setRegistrationRequests((prev) => [newReq, ...prev]);
+
+    // Add alert notification for Class Teacher or Admin
     const notif: Notification = {
       id: `notif-${Date.now()}`,
-      title: 'New Account Pending Approval',
-      message: `${newUser.name} registered as ${newUser.role} (${newUser.email}).`,
+      title: 'New Two-Stage Registration Application',
+      message: `${newUser.name} applied for ${newUser.role}. Assigned to ${resolvedClass?.classTeacherName || 'Class Teacher'} for verification.`,
       type: 'SYSTEM',
       createdAt: new Date().toISOString(),
       isRead: false
@@ -121,14 +190,227 @@ export function App() {
 
     return {
       success: true,
-      message: `Registration submitted! Your ${data.role} account is now pending Administrator approval.`
+      message: `Registration submitted! Awaiting verification by assigned Class Teacher (${resolvedClass?.classTeacherName || 'Faculty'}).`
     };
   };
 
-  // Admin approves or declines account
+  // Class Teacher Confirms Registration
+  const handleTeacherConfirmRegistration = (requestId: string) => {
+    setRegistrationRequests((prev) =>
+      prev.map((r) =>
+        r.id === requestId
+          ? {
+              ...r,
+              status: 'PENDING_ADMIN_REVIEW',
+              teacherReviewedBy: currentUser?.name || 'Class Teacher',
+              teacherReviewedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          : r
+      )
+    );
+
+    fetch(`/api/faculty/registration-requests/${requestId}/confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teacherId: currentUser?.id,
+        teacherName: currentUser?.name,
+        userRole: currentUser?.role
+      })
+    }).catch((err) => console.log('Backend teacher confirm error:', err));
+
+    const targetReq = registrationRequests.find((r) => r.id === requestId);
+    if (targetReq) {
+      setNotifications((prev) => [
+        {
+          id: `notif-${Date.now()}`,
+          title: 'Registration Teacher-Confirmed',
+          message: `Application for ${targetReq.userName} (${targetReq.requestedRole}) confirmed by Class Teacher. Pending final Admin authorization.`,
+          type: 'SYSTEM',
+          createdAt: new Date().toISOString(),
+          isRead: false
+        },
+        ...prev
+      ]);
+    }
+  };
+
+  // Class Teacher Rejects Registration
+  const handleTeacherRejectRegistration = (requestId: string, reason: string) => {
+    setRegistrationRequests((prev) =>
+      prev.map((r) =>
+        r.id === requestId
+          ? {
+              ...r,
+              status: 'REJECTED_BY_TEACHER',
+              teacherReviewedBy: currentUser?.name || 'Class Teacher',
+              teacherReviewedAt: new Date().toISOString(),
+              teacherReviewReason: reason,
+              updatedAt: new Date().toISOString()
+            }
+          : r
+      )
+    );
+
+    // Update user status to REJECTED
+    const targetReq = registrationRequests.find((r) => r.id === requestId);
+    if (targetReq) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === targetReq.userId
+            ? { ...u, status: 'REJECTED', accountStatus: 'REJECTED' }
+            : u
+        )
+      );
+    }
+
+    fetch(`/api/faculty/registration-requests/${requestId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teacherId: currentUser?.id,
+        teacherName: currentUser?.name,
+        userRole: currentUser?.role,
+        reason
+      })
+    }).catch((err) => console.log('Backend teacher reject error:', err));
+  };
+
+  // Admin Approves Registration (Activates Account)
+  const handleAdminApproveRegistration = (requestId: string) => {
+    const targetReq = registrationRequests.find((r) => r.id === requestId);
+    if (!targetReq) return;
+
+    setRegistrationRequests((prev) =>
+      prev.map((r) =>
+        r.id === requestId
+          ? {
+              ...r,
+              status: 'APPROVED',
+              adminReviewedBy: currentUser?.name || 'Administrator',
+              adminReviewedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            }
+          : r
+      )
+    );
+
+    // Transactionally activate user account
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === targetReq.userId
+          ? { ...u, status: 'APPROVED', accountStatus: 'ACTIVE' }
+          : u
+      )
+    );
+
+    fetch(`/api/admin/registration-requests/${requestId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        adminId: currentUser?.id,
+        adminName: currentUser?.name,
+        userRole: currentUser?.role
+      })
+    }).catch((err) => console.log('Backend admin approve error:', err));
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'Account Activated by Administrator',
+        message: `${targetReq.userName}'s account is now ACTIVE and authorized for EduTrack login.`,
+        type: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        isRead: false
+      },
+      ...prev
+    ]);
+  };
+
+  // Admin Rejects Registration
+  const handleAdminRejectRegistration = (requestId: string, reason: string) => {
+    const targetReq = registrationRequests.find((r) => r.id === requestId);
+    if (!targetReq) return;
+
+    setRegistrationRequests((prev) =>
+      prev.map((r) =>
+        r.id === requestId
+          ? {
+              ...r,
+              status: 'REJECTED_BY_ADMIN',
+              adminReviewedBy: currentUser?.name || 'Administrator',
+              adminReviewedAt: new Date().toISOString(),
+              adminReviewReason: reason,
+              updatedAt: new Date().toISOString()
+            }
+          : r
+      )
+    );
+
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === targetReq.userId
+          ? { ...u, status: 'REJECTED', accountStatus: 'REJECTED' }
+          : u
+      )
+    );
+
+    fetch(`/api/admin/registration-requests/${requestId}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        adminId: currentUser?.id,
+        adminName: currentUser?.name,
+        userRole: currentUser?.role,
+        reason
+      })
+    }).catch((err) => console.log('Backend admin reject error:', err));
+  };
+
+  // Admin Creates Another Admin
+  const handleAdminCreateAdmin = (adminData: { name: string; email: string; department?: string }) => {
+    const newAdminUser: User = {
+      id: `usr-adm-${Date.now()}`,
+      name: adminData.name,
+      email: adminData.email,
+      role: 'ADMIN',
+      status: 'APPROVED',
+      accountStatus: 'ACTIVE',
+      department: adminData.department || 'Administration',
+      avatarUrl: `https://images.unsplash.com/photo-${1530000000000 + Math.floor(Math.random() * 100000000)}?w=150&auto=format&fit=crop&q=80`
+    };
+
+    setUsers((prev) => [...prev, newAdminUser]);
+
+    fetch('/api/admin/users/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...adminData,
+        creatorId: currentUser?.id,
+        creatorName: currentUser?.name,
+        creatorRole: currentUser?.role
+      })
+    }).catch((err) => console.log('Backend create admin error:', err));
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'New Administrator Provisioned',
+        message: `${adminData.name} (${adminData.email}) was provisioned as Administrator by ${currentUser?.name}.`,
+        type: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        isRead: false
+      },
+      ...prev
+    ]);
+  };
+
+  // Admin approves or declines account legacy fallback
   const handleApproveUser = (userId: string, status: 'APPROVED' | 'REJECTED') => {
     setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, status } : u))
+      prev.map((u) => (u.id === userId ? { ...u, status, accountStatus: status === 'APPROVED' ? 'ACTIVE' : 'REJECTED' } : u))
     );
 
     // Sync with backend API
@@ -158,7 +440,7 @@ export function App() {
     fetch('/api/health')
       .then((res) => res.json())
       .then(() => {
-        // Fetch users, courses, assignments, etc.
+        // Fetch users, courses, assignments, academic classes, registration requests, etc.
         Promise.all([
           fetch('/api/users').then((r) => r.json()).catch(() => null),
           fetch('/api/courses').then((r) => r.json()).catch(() => null),
@@ -169,8 +451,10 @@ export function App() {
           fetch('/api/quiz-attempts').then((r) => r.json()).catch(() => null),
           fetch('/api/attendance').then((r) => r.json()).catch(() => null),
           fetch('/api/notifications').then((r) => r.json()).catch(() => null),
-          fetch('/api/parent/reviews').then((r) => r.json()).catch(() => null)
-        ]).then(([u, c, mats, asg, subs, qz, qa, att, notifs, revs]) => {
+          fetch('/api/parent/reviews').then((r) => r.json()).catch(() => null),
+          fetch('/api/academic-classes').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/registration-requests').then((r) => r.json()).catch(() => null)
+        ]).then(([u, c, mats, asg, subs, qz, qa, att, notifs, revs, aClasses, regReqs]) => {
           if (u && Array.isArray(u) && u.length > 0) setUsers(u);
           if (c && Array.isArray(c) && c.length > 0) setCourses(c);
           if (mats && Array.isArray(mats) && mats.length > 0) setMaterials(mats);
@@ -181,6 +465,8 @@ export function App() {
           if (att && Array.isArray(att) && att.length > 0) setAttendance(att);
           if (notifs && Array.isArray(notifs) && notifs.length > 0) setNotifications(notifs);
           if (revs && Array.isArray(revs) && revs.length > 0) setParentReviews(revs);
+          if (aClasses && Array.isArray(aClasses) && aClasses.length > 0) setAcademicClasses(aClasses);
+          if (regReqs && Array.isArray(regReqs) && regReqs.length > 0) setRegistrationRequests(regReqs);
         });
       })
       .catch((err) => console.log('Running in local mock store:', err));
@@ -515,6 +801,7 @@ export function App() {
     return (
       <LoginScreen
         users={users}
+        classes={academicClasses}
         onLogin={handleLogin}
         onRegister={handleRegisterUser}
       />
@@ -609,6 +896,9 @@ export function App() {
             attendance={attendance}
             parentReviews={parentReviews}
             students={users}
+            registrationRequests={registrationRequests}
+            onConfirmRegistration={handleTeacherConfirmRegistration}
+            onRejectRegistration={handleTeacherRejectRegistration}
             onGradeSubmission={handleGradeSubmission}
             onReplyParentReview={handleReplyParentReview}
             onSaveMaterial={handleSaveMaterial}
@@ -627,6 +917,10 @@ export function App() {
             courses={courses}
             submissions={submissions}
             parentReviews={parentReviews}
+            registrationRequests={registrationRequests}
+            onApproveRegistration={handleAdminApproveRegistration}
+            onRejectRegistration={handleAdminRejectRegistration}
+            onCreateAdmin={handleAdminCreateAdmin}
             onApproveUser={handleApproveUser}
           />
         )}

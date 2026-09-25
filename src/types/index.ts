@@ -1,6 +1,64 @@
 export type UserRole = 'ADMIN' | 'FACULTY' | 'STUDENT' | 'PARENT';
 
-export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+export type UserStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ACTIVE';
+
+export type RegistrationStatus =
+  | 'PENDING_TEACHER_REVIEW'
+  | 'TEACHER_CONFIRMED'
+  | 'PENDING_ADMIN_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED_BY_TEACHER'
+  | 'REJECTED_BY_ADMIN';
+
+export type AccountStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
+
+export interface AcademicClass {
+  id: string;
+  name?: string;
+  className: string;
+  section: string;
+  academicYear: string;
+  department: string;
+  semester: number;
+  classTeacherId: string;
+  classTeacherName: string;
+  classTeacherEmail: string;
+}
+
+export interface RegistrationRequest {
+  id: string;
+  userId: string;
+  applicantName?: string;
+  applicantEmail?: string;
+  userName?: string;
+  userEmail?: string;
+  requestedRole: 'STUDENT' | 'PARENT' | 'FACULTY';
+  classId?: string;
+  className?: string;
+  classSection?: string;
+  classTeacherId?: string;
+  classTeacherName?: string;
+  phone?: string;
+  // Student specific
+  regNumber?: string;
+  studentRegNumber?: string;
+  department?: string;
+  // Parent specific
+  studentId?: string;
+  childName?: string;
+  studentName?: string;
+  relationship?: 'Father' | 'Mother' | 'Guardian' | string;
+  status: RegistrationStatus;
+  // Two-stage review tracking
+  teacherReviewedBy?: string;
+  teacherReviewedAt?: string;
+  teacherReviewReason?: string;
+  adminReviewedBy?: string;
+  adminReviewedAt?: string;
+  adminReviewReason?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
 
 export interface User {
   id: string;
@@ -8,12 +66,20 @@ export interface User {
   email: string;
   role: UserRole;
   status?: UserStatus;
+  accountStatus?: AccountStatus;
   department?: string;
   avatarUrl?: string;
+  phone?: string;
+  // Class Teacher association for faculty
+  isClassTeacher?: boolean;
+  assignedClassId?: string;
+  assignedClassName?: string;
   // For parents: list of student IDs they monitor
   childStudentIds?: string[];
-  // For students: student registration number
+  // For students: student registration number & class
   regNumber?: string;
+  classId?: string;
+  className?: string;
   gpa?: number;
   semester?: number;
   createdAt?: string;

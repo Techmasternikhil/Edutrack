@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, UserRole } from '../types';
+import { AcademicClass, User, UserRole } from '../types';
 import {
   GraduationCap,
   Shield,
@@ -15,11 +15,15 @@ import {
   UserPlus,
   Clock,
   Building,
-  Hash
+  Hash,
+  School,
+  UserCheck2,
+  HelpCircle
 } from 'lucide-react';
 
 interface LoginScreenProps {
   users: User[];
+  classes?: AcademicClass[];
   onLogin: (user: User) => void;
   onRegister: (data: {
     name: string;
@@ -28,10 +32,16 @@ interface LoginScreenProps {
     department?: string;
     regNumber?: string;
     childStudentIds?: string[];
+    phone?: string;
+    classId?: string;
+    className?: string;
+    studentRegNumber?: string;
+    childName?: string;
+    relationship?: string;
   }) => { success: boolean; message: string };
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegister }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ users, classes = [], onLogin, onRegister }) => {
   const [mode, setMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
   const [selectedRole, setSelectedRole] = useState<UserRole>('PARENT');
 
@@ -39,13 +49,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [department, setDepartment] = useState('Computer Science');
   const [regNumber, setRegNumber] = useState('');
+  const [selectedClassId, setSelectedClassId] = useState(classes[0]?.id || 'cls-cse-4a');
   const [selectedChildId, setSelectedChildId] = useState('usr-stu-1');
+  const [relationship, setRelationship] = useState('Father');
 
   // UI feedback
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [twoStageNotice, setTwoStageNotice] = useState<{
+    role: UserRole;
+    applicantName: string;
+    className?: string;
+    teacherName?: string;
+  } | null>(null);
 
   const roleConfigs = [
     {
@@ -132,7 +151,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
     setSuccessMsg(null);
 
     if (selectedRole === 'ADMIN') {
-      setError('Administrator accounts cannot be self-registered.');
+      setError('Administrator accounts cannot be self-registered. Only existing authenticated administrators can create new admin accounts.');
       return;
     }
 
@@ -141,19 +160,30 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
       return;
     }
 
+    const targetClass = classes.find((c) => c.id === selectedClassId);
+
     const payload: any = {
       name: name.trim(),
       email: email.trim().toLowerCase(),
-      role: selectedRole
+      role: selectedRole,
+      phone: phone.trim() || undefined
     };
 
     if (selectedRole === 'FACULTY') {
       payload.department = department;
     } else if (selectedRole === 'STUDENT') {
       payload.department = department;
+      payload.classId = selectedClassId;
+      payload.className = targetClass?.name || 'B.Tech CSE - Semester 4 Sec A';
       payload.regNumber = regNumber.trim() || `CS-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
     } else if (selectedRole === 'PARENT') {
+      const selectedChild = activeStudents.find((s) => s.id === selectedChildId);
       payload.childStudentIds = [selectedChildId];
+      payload.childName = selectedChild?.name || 'Selected Student';
+      payload.studentRegNumber = selectedChild?.regNumber || 'STU-ID';
+      payload.relationship = relationship;
+      payload.classId = selectedChild?.classId || selectedClassId;
+      payload.className = selectedChild?.className || targetClass?.name;
     }
 
     const result = onRegister(payload);
@@ -163,20 +193,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
       return;
     }
 
-    setSuccessMsg(result.message);
+    // Set two stage notice modal
+    setTwoStageNotice({
+      role: selectedRole,
+      applicantName: name.trim(),
+      className: targetClass?.name,
+      teacherName: targetClass?.classTeacherName || 'Assigned Class Teacher'
+    });
+
     setName('');
     setEmail('');
     setPassword('');
+    setPhone('');
     setRegNumber('');
-    setTimeout(() => {
-      setMode('LOGIN');
-      setSuccessMsg(null);
-    }, 4000);
   };
 
   const handleQuickLogin = (user: User) => {
-    if (user.role !== 'ADMIN' && user.status === 'PENDING') {
-      setError(`Cannot login: Account for ${user.name} is awaiting Admin approval.`);
+    if (user.role !== 'ADMIN' && (user.accountStatus === 'PENDING' || user.status === 'PENDING')) {
+      setError(`Cannot login: Account for ${user.name} is awaiting Class Teacher / Administrator approval.`);
       return;
     }
     setEmail(user.email);
@@ -189,6 +223,73 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
       {/* Background Glows */}
       <div className="absolute top-1/4 -left-32 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Two-Stage Registration Confirmation Notice Modal */}
+      {twoStageNotice && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-slate-900 border border-indigo-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl relative">
+            <div className="w-14 h-14 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mx-auto">
+              <UserCheck2 className="w-7 h-7" />
+            </div>
+
+            <div className="text-center space-y-2">
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                Two-Stage Verification Pipeline Initialized
+              </span>
+              <h3 className="text-xl font-bold text-white">Registration Submitted Successfully!</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Thank you, <strong className="text-white">{twoStageNotice.applicantName}</strong>. Your registration for{' '}
+                <strong className="text-indigo-300">{twoStageNotice.role}</strong> has entered the official university authorization workflow.
+              </p>
+            </div>
+
+            {/* Visual Pipeline Progression */}
+            <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500 text-amber-400 text-xs font-bold flex items-center justify-center shrink-0">
+                  1
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-amber-300">Stage 1: Class Teacher Verification</div>
+                  <div className="text-[11px] text-slate-400">
+                    Assigned Class Teacher ({twoStageNotice.teacherName || 'Faculty'}) must review and confirm your academic eligibility.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-slate-800 border border-slate-700 text-slate-400 text-xs font-bold flex items-center justify-center shrink-0">
+                  2
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-300">Stage 2: Institutional Admin Review</div>
+                  <div className="text-[11px] text-slate-400">
+                    Administrator performs final authorization and account activation.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs flex items-center gap-2">
+              <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>
+                Account status remains <strong className="text-amber-200">INACTIVE</strong> until both stages complete. You cannot log in yet.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setTwoStageNotice(null);
+                setMode('LOGIN');
+              }}
+              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-colors cursor-pointer"
+            >
+              Return to Login Portal
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-4xl space-y-7 z-10">
         {/* App Branding */}
@@ -251,7 +352,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                  {mode === 'LOGIN' ? 'Portal Authentication' : 'New User Onboarding'}
+                  {mode === 'LOGIN' ? 'Portal Authentication' : 'Two-Stage Onboarding'}
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
@@ -419,22 +520,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
             ) : (
               /* Mode 2: REGISTRATION FORM */
               <form onSubmit={handleRegisterSubmit} className="lg:col-span-12 space-y-4">
-                <div className="p-3.5 rounded-2xl bg-indigo-950/20 border border-indigo-500/30 text-xs text-indigo-300 flex items-center gap-2.5">
-                  <Clock className="w-4 h-4 text-indigo-400 shrink-0" />
-                  <span>
-                    Self-service registration submits your account for <strong>Administrator Verification</strong>. You will be able to log in once approved.
-                  </span>
+                <div className="p-4 rounded-2xl bg-indigo-950/30 border border-indigo-500/30 text-xs text-indigo-200 space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-indigo-300">
+                    <Clock className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <span>Two-Stage Verification Enforced</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Registration requests are routed first to your <strong>Assigned Class Teacher</strong> for academic confirmation, followed by <strong>Institutional Admin Review</strong>. Accounts remain inactive until both approvals complete.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Full Legal Name
+                      Full Legal Name *
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Dr. Jane Foster or Rahul Sharma"
+                      placeholder="e.g. Arun Kumar or Raj Kumar"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
@@ -443,12 +547,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Official Email Address
+                      Official Email Address *
                     </label>
                     <input
                       type="email"
                       required
-                      placeholder="e.g. name@university.edu or parent@gmail.com"
+                      placeholder="e.g. applicant@university.edu"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
@@ -456,26 +560,80 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
                   </div>
                 </div>
 
-                {/* Role Specific Fields */}
-                {selectedRole === 'FACULTY' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Academic Department
+                      Contact Phone Number
                     </label>
-                    <div className="relative">
-                      <Building className="w-4 h-4 text-slate-500 absolute left-3.5 top-3 pointer-events-none" />
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Computer Science & Engineering"
-                        value={department}
-                        onChange={(e) => setDepartment(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
-                      />
-                    </div>
+                    <input
+                      type="text"
+                      placeholder="e.g. +91 98765 43210"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                    />
                   </div>
-                )}
 
+                  {selectedRole === 'STUDENT' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                        Academic Class / Batch / Section *
+                      </label>
+                      <div className="relative">
+                        <School className="w-4 h-4 text-slate-500 absolute left-3.5 top-3 pointer-events-none" />
+                        <select
+                          value={selectedClassId}
+                          onChange={(e) => setSelectedClassId(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        >
+                          {classes.map((cls) => (
+                            <option key={cls.id} value={cls.id}>
+                              {cls.name} ({cls.section}) • Teacher: {cls.classTeacherName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRole === 'FACULTY' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                        Academic Department *
+                      </label>
+                      <div className="relative">
+                        <Building className="w-4 h-4 text-slate-500 absolute left-3.5 top-3 pointer-events-none" />
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Computer Science & Engineering"
+                          value={department}
+                          onChange={(e) => setDepartment(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedRole === 'PARENT' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                        Relationship to Student *
+                      </label>
+                      <select
+                        value={relationship}
+                        onChange={(e) => setRelationship(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="Father">Father</option>
+                        <option value="Mother">Mother</option>
+                        <option value="Guardian">Legal Guardian</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Additional Specific Fields */}
                 {selectedRole === 'STUDENT' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -492,7 +650,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                        Student Registration Number
+                        Student Registration / Roll Number
                       </label>
                       <div className="relative">
                         <Hash className="w-4 h-4 text-slate-500 absolute left-3.5 top-3 pointer-events-none" />
@@ -511,7 +669,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
                 {selectedRole === 'PARENT' && (
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                      Link Registered Student Account
+                      Select Enrolled Child / Student Account *
                     </label>
                     <select
                       value={selectedChildId}
@@ -520,12 +678,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
                     >
                       {activeStudents.map((stu) => (
                         <option key={stu.id} value={stu.id}>
-                          {stu.name} ({stu.regNumber || stu.email})
+                          {stu.name} ({stu.regNumber || stu.email}) • {stu.className || 'B.Tech CSE'}
                         </option>
                       ))}
                     </select>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Parental access will be restricted strictly to this student's records upon approval.
+                      Parent verification will be routed to this child's assigned Class Teacher for confirmation.
                     </p>
                   </div>
                 )}
@@ -533,10 +691,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, onLogin, onRegi
                 <div className="pt-2">
                   <button
                     type="submit"
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     <UserPlus className="w-4 h-4" />
-                    <span>Submit Registration for Admin Approval</span>
+                    <span>Submit Registration for Teacher Verification</span>
                   </button>
                 </div>
               </form>

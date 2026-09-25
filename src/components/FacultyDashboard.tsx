@@ -8,7 +8,8 @@ import {
   Quiz,
   QuizAttempt,
   AttendanceRecord,
-  ParentReview
+  ParentReview,
+  RegistrationRequest
 } from '../types';
 import { APP_CONFIG } from '../config/constants';
 import { YouTubeVideoPlayer } from './faculty/YouTubeVideoPlayer';
@@ -39,7 +40,11 @@ import {
   Trash2,
   Send,
   Eye,
-  Check
+  Check,
+  UserCheck2,
+  X,
+  School,
+  HeartHandshake
 } from 'lucide-react';
 
 interface FacultyDashboardProps {
@@ -53,6 +58,9 @@ interface FacultyDashboardProps {
   attendance: AttendanceRecord[];
   parentReviews: ParentReview[];
   students: User[];
+  registrationRequests?: RegistrationRequest[];
+  onConfirmRegistration?: (requestId: string) => void;
+  onRejectRegistration?: (requestId: string, reason: string) => void;
   onGradeSubmission: (submissionId: string, marks: number, feedback: string) => void;
   onReplyParentReview: (reviewId: string, reply: string) => void;
   onSaveMaterial: (material: Partial<CourseMaterial>) => void;
@@ -75,6 +83,9 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
   attendance,
   parentReviews,
   students,
+  registrationRequests = [],
+  onConfirmRegistration,
+  onRejectRegistration,
   onGradeSubmission,
   onReplyParentReview,
   onSaveMaterial,
@@ -90,11 +101,25 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
     (c) => c.facultyId === currentFaculty.id || c.facultyName === currentFaculty.name
   );
 
+  // Determine if this faculty is assigned as a class teacher
+  const isClassTeacher = Boolean(
+    currentFaculty.isClassTeacher ||
+    registrationRequests.some((r) => r.classTeacherId === currentFaculty.id)
+  );
+
+  // Filter requests strictly assigned to this class teacher
+  const myTeacherRequests = registrationRequests.filter(
+    (r) => r.classTeacherId === currentFaculty.id || isClassTeacher
+  );
+  const pendingTeacherRequests = myTeacherRequests.filter(
+    (r) => r.status === 'PENDING_TEACHER_REVIEW'
+  );
+
   // Selected subject workspace: null means "All Subjects Overview"
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
   // Main active tab within workspace:
-  // 'OVERVIEW' | 'SUBJECTS' | 'VIDEOS' | 'MATERIALS' | 'QUIZZES' | 'ASSIGNMENTS' | 'ATTENDANCE' | 'PARENTS'
+  // 'OVERVIEW' | 'SUBJECTS' | 'VIDEOS' | 'MATERIALS' | 'QUIZZES' | 'ASSIGNMENTS' | 'ATTENDANCE' | 'PARENTS' | 'REGISTRATIONS'
   const [activeTab, setActiveTab] = useState<string>('OVERVIEW');
 
   // Modals state
@@ -107,6 +132,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
   const [editingAssignment, setEditingAssignment] = useState<Assignment | null>(null);
   const [previewVideo, setPreviewVideo] = useState<CourseMaterial | null>(null);
+
+  // Teacher Registration Review Modal state
+  const [viewingRequest, setViewingRequest] = useState<RegistrationRequest | null>(null);
+  const [rejectingRequest, setRejectingRequest] = useState<RegistrationRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState<string>('');
 
   // Inline grading state
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
@@ -248,7 +278,10 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           { id: 'QUIZZES', label: 'Quizzes & MCQ', icon: Award, badge: relevantQuizzes.length },
           { id: 'ASSIGNMENTS', label: 'Assignments & Submissions', icon: FileCheck2, badge: pendingSubmissions.length },
           { id: 'ATTENDANCE', label: 'Attendance Sessions', icon: CalendarCheck },
-          { id: 'PARENTS', label: 'Parent Inquiries', icon: MessageSquare, badge: parentReviews.length }
+          { id: 'PARENTS', label: 'Parent Inquiries', icon: MessageSquare, badge: parentReviews.length },
+          ...(isClassTeacher
+            ? [{ id: 'REGISTRATIONS', label: 'Registration Requests', icon: UserCheck2, badge: pendingTeacherRequests.length }]
+            : [])
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1160,6 +1193,324 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Class Teacher Registration Requests Tab */}
+      {activeTab === 'REGISTRATIONS' && isClassTeacher && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="p-5 rounded-2xl glass-panel bg-gradient-to-r from-indigo-950/40 via-slate-900 to-amber-950/30 border border-indigo-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+                <School className="w-4 h-4" />
+                <span>Class Teacher Verification Hub</span>
+              </div>
+              <h3 className="text-base font-bold text-white mt-1">
+                Student & Parent Registration Queue
+              </h3>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Assigned class teacher responsibility: Verify learner identity and child-parent associations before routing for Administrator approval.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-xl text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                {pendingTeacherRequests.length} Pending Review
+              </span>
+            </div>
+          </div>
+
+          {/* List of Requests */}
+          {myTeacherRequests.length === 0 ? (
+            <div className="p-8 rounded-2xl glass-panel text-center space-y-3">
+              <UserCheck2 className="w-10 h-10 text-slate-500 mx-auto" />
+              <p className="text-sm font-semibold text-slate-300">No Registration Requests Found</p>
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                There are currently no new student or parent registration requests assigned to your class teacher queue.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {myTeacherRequests.map((req) => {
+                const isPending = req.status === 'PENDING_TEACHER_REVIEW';
+                const isConfirmed = req.status === 'TEACHER_CONFIRMED' || req.status === 'PENDING_ADMIN_REVIEW' || req.status === 'APPROVED';
+                const isRejected = req.status === 'REJECTED_BY_TEACHER' || req.status === 'REJECTED_BY_ADMIN';
+
+                return (
+                  <div
+                    key={req.id}
+                    className="p-5 rounded-2xl glass-panel border border-slate-800 hover:border-slate-700 space-y-3 shadow-lg relative"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs ${
+                            req.requestedRole === 'STUDENT' ? 'bg-emerald-600' : 'bg-purple-600'
+                          }`}
+                        >
+                          {req.requestedRole === 'STUDENT' ? <Users className="w-5 h-5" /> : <HeartHandshake className="w-5 h-5" />}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <span>{req.userName}</span>
+                            <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-slate-800 text-slate-300 border border-slate-700">
+                              {req.requestedRole}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 font-mono">{req.userEmail}</div>
+                        </div>
+                      </div>
+
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          isPending
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                            : isConfirmed
+                            ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                            : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                        }`}
+                      >
+                        {req.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-[11px] space-y-1 text-slate-300">
+                      <div>
+                        <strong className="text-slate-200">Class:</strong> {req.className || 'B.Tech CSE - S4'}
+                      </div>
+                      {req.studentRegNumber && (
+                        <div>
+                          <strong className="text-slate-200">Student ID / Roll:</strong> {req.studentRegNumber}
+                        </div>
+                      )}
+                      {req.requestedRole === 'PARENT' && (
+                        <>
+                          <div>
+                            <strong className="text-slate-200">Child:</strong> {req.childName || 'Assigned Student'}
+                          </div>
+                          <div>
+                            <strong className="text-slate-200">Relationship:</strong> {req.relationship || 'Guardian'}
+                          </div>
+                        </>
+                      )}
+                      <div>
+                        <strong className="text-slate-200">Registered On:</strong> {new Date(req.createdAt).toLocaleDateString()}
+                      </div>
+                      {req.teacherReviewReason && (
+                        <div className="pt-1 text-amber-300 font-medium">
+                          <strong>Teacher Note:</strong> {req.teacherReviewReason}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setViewingRequest(req)}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>View Details</span>
+                      </button>
+
+                      {isPending && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRejectingRequest(req);
+                              setRejectReason('');
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                            <span>Reject</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onConfirmRegistration && onConfirmRegistration(req.id)}
+                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1 shadow-md shadow-emerald-600/20 cursor-pointer"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Confirm</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Teacher View Details Modal */}
+      {viewingRequest && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-lg w-full space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <School className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-bold text-white">Registration Application Details</h3>
+              </div>
+              <button
+                onClick={() => setViewingRequest(null)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-slate-300">
+              <div className="grid grid-cols-2 gap-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
+                <div>
+                  <span className="text-slate-500 block text-[10px]">Applicant Name</span>
+                  <strong className="text-white text-xs">{viewingRequest.userName}</strong>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[10px]">Applied Role</span>
+                  <span className="text-indigo-400 font-bold">{viewingRequest.requestedRole}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[10px]">Email</span>
+                  <span className="font-mono text-slate-300">{viewingRequest.userEmail}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 block text-[10px]">Phone</span>
+                  <span>{viewingRequest.phone || 'Not Provided'}</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2">
+                <div>
+                  <span className="text-slate-500 block text-[10px]">Assigned Class</span>
+                  <span className="text-white font-semibold">{viewingRequest.className || 'B.Tech CSE'}</span>
+                </div>
+                {viewingRequest.requestedRole === 'STUDENT' && (
+                  <div>
+                    <span className="text-slate-500 block text-[10px]">Student Reg / Roll Number</span>
+                    <span className="font-mono text-emerald-400">{viewingRequest.studentRegNumber || 'CS-2026-001'}</span>
+                  </div>
+                )}
+                {viewingRequest.requestedRole === 'PARENT' && (
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-800/80">
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Linked Child Student</span>
+                      <strong className="text-white">{viewingRequest.childName || 'Assigned Student'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 block text-[10px]">Relationship</span>
+                      <span className="text-purple-400 font-semibold">{viewingRequest.relationship || 'Father'}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 space-y-1">
+                <div>
+                  <span className="text-slate-500 text-[10px]">Workflow Status:</span>{' '}
+                  <span className="font-bold text-amber-300">{viewingRequest.status}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px]">Submission Timestamp:</span>{' '}
+                  <span className="text-slate-400">{new Date(viewingRequest.createdAt).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setViewingRequest(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Close
+              </button>
+              {viewingRequest.status === 'PENDING_TEACHER_REVIEW' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const req = viewingRequest;
+                      setViewingRequest(null);
+                      setRejectingRequest(req);
+                      setRejectReason('');
+                    }}
+                    className="px-4 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-semibold cursor-pointer"
+                  >
+                    Reject Application
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const id = viewingRequest.id;
+                      setViewingRequest(null);
+                      onConfirmRegistration && onConfirmRegistration(id);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold cursor-pointer"
+                  >
+                    Confirm & Route to Admin
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Rejection Reason Required Modal */}
+      {rejectingRequest && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-500/40 rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl relative">
+            <div className="flex items-center gap-2 text-rose-400">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <h3 className="text-sm font-bold text-white">Decline Registration Application</h3>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Please provide the official academic justification for declining the registration of{' '}
+              <strong className="text-white">{rejectingRequest.userName}</strong> ({rejectingRequest.requestedRole}).
+              Silent rejections are prohibited.
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Rejection Reason *
+              </label>
+              <textarea
+                required
+                rows={3}
+                placeholder="e.g. Student roll number not in class roster / Invalid parent relation verified..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-rose-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setRejectingRequest(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!rejectReason.trim()}
+                onClick={() => {
+                  if (!rejectReason.trim()) return;
+                  onRejectRegistration && onRejectRegistration(rejectingRequest.id, rejectReason.trim());
+                  setRejectingRequest(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
+              >
+                Confirm Rejection
+              </button>
+            </div>
           </div>
         </div>
       )}
