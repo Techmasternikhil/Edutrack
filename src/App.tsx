@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, UserRole, Course, Assignment, Submission, Quiz, QuizAttempt, AttendanceRecord, Notification, ParentReview } from './types';
 import {
   mockUsers,
@@ -13,6 +13,7 @@ import {
 } from './data/mockData';
 import { Header } from './components/Header';
 import { UserProfileModal } from './components/UserProfileModal';
+import { AIAssistantModal } from './components/AIAssistantModal';
 import { ParentDashboard } from './components/ParentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { FacultyDashboard } from './components/FacultyDashboard';
@@ -33,16 +34,48 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<User>(
     mockUsers.find((u) => u.role === 'PARENT') || mockUsers[0]
   );
-  const [courses] = useState<Course[]>(mockCourses);
-  const [assignments] = useState<Assignment[]>(mockAssignments);
+  const [courses, setCourses] = useState<Course[]>(mockCourses);
+  const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments);
   const [submissions, setSubmissions] = useState<Submission[]>(mockSubmissions);
-  const [quizzes] = useState<Quiz[]>(mockQuizzes);
-  const [quizAttempts] = useState<QuizAttempt[]>(mockQuizAttempts);
-  const [attendance] = useState<AttendanceRecord[]>(mockAttendance);
+  const [quizzes, setQuizzes] = useState<Quiz[]>(mockQuizzes);
+  const [quizAttempts, setQuizAttempts] = useState<QuizAttempt[]>(mockQuizAttempts);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [parentReviews, setParentReviews] = useState<ParentReview[]>(mockParentReviews);
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isAIOpen, setIsAIOpen] = useState(false);
+
+  // Sync initial state from backend on mount if server is running
+  useEffect(() => {
+    fetch('/api/health')
+      .then((res) => res.json())
+      .then(() => {
+        // Fetch users, courses, assignments, etc.
+        Promise.all([
+          fetch('/api/users').then((r) => r.json()).catch(() => null),
+          fetch('/api/courses').then((r) => r.json()).catch(() => null),
+          fetch('/api/assignments').then((r) => r.json()).catch(() => null),
+          fetch('/api/submissions').then((r) => r.json()).catch(() => null),
+          fetch('/api/quizzes').then((r) => r.json()).catch(() => null),
+          fetch('/api/quiz-attempts').then((r) => r.json()).catch(() => null),
+          fetch('/api/attendance').then((r) => r.json()).catch(() => null),
+          fetch('/api/notifications').then((r) => r.json()).catch(() => null),
+          fetch('/api/parent/reviews').then((r) => r.json()).catch(() => null)
+        ]).then(([u, c, asg, subs, qz, qa, att, notifs, revs]) => {
+          if (u && Array.isArray(u) && u.length > 0) setUsers(u);
+          if (c && Array.isArray(c) && c.length > 0) setCourses(c);
+          if (asg && Array.isArray(asg) && asg.length > 0) setAssignments(asg);
+          if (subs && Array.isArray(subs) && subs.length > 0) setSubmissions(subs);
+          if (qz && Array.isArray(qz) && qz.length > 0) setQuizzes(qz);
+          if (qa && Array.isArray(qa) && qa.length > 0) setQuizAttempts(qa);
+          if (att && Array.isArray(att) && att.length > 0) setAttendance(att);
+          if (notifs && Array.isArray(notifs) && notifs.length > 0) setNotifications(notifs);
+          if (revs && Array.isArray(revs) && revs.length > 0) setParentReviews(revs);
+        });
+      })
+      .catch((err) => console.log('Running in local mock store:', err));
+  }, []);
 
   // Switch role helper
   const handleSwitchRole = (newRole: UserRole) => {
@@ -50,6 +83,12 @@ export function App() {
     if (targetUser) {
       setCurrentUser(targetUser);
     }
+  };
+
+  // Mark all notifications as read
+  const handleMarkNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    fetch('/api/notifications/read-all', { method: 'PUT' }).catch(() => null);
   };
 
   // Parent submits review
@@ -65,7 +104,7 @@ export function App() {
 
     setParentReviews([reviewItem, ...parentReviews]);
 
-    // Add notification
+    // Add notification locally
     const notif: Notification = {
       id: `notif-${Date.now()}`,
       title: 'New Parent Inquiry',
@@ -75,6 +114,13 @@ export function App() {
       isRead: false
     };
     setNotifications([notif, ...notifications]);
+
+    // Sync with backend API
+    fetch('/api/parent/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newRev)
+    }).catch((err) => console.log('Backend sync skipped:', err));
   };
 
   // Faculty grades submission
@@ -86,6 +132,13 @@ export function App() {
           : s
       )
     );
+
+    // Sync with backend API
+    fetch(`/api/submissions/${submissionId}/grade`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ marksObtained: marks, feedback })
+    }).catch((err) => console.log('Backend sync skipped:', err));
   };
 
   // Faculty replies to parent review
@@ -95,6 +148,13 @@ export function App() {
         r.id === reviewId ? { ...r, facultyReply: reply, status: 'ACKNOWLEDGED' } : r
       )
     );
+
+    // Sync with backend API
+    fetch(`/api/parent/reviews/${reviewId}/reply`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ facultyReply: reply, status: 'ACKNOWLEDGED' })
+    }).catch((err) => console.log('Backend sync skipped:', err));
   };
 
   // Student submits assignment
@@ -116,6 +176,50 @@ export function App() {
       submittedAt: new Date().toISOString()
     };
     setSubmissions([newSub, ...submissions]);
+
+    // Sync with backend API
+    fetch('/api/submissions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSub)
+    }).catch((err) => console.log('Backend sync skipped:', err));
+  };
+
+  // Student attempts quiz
+  const handleStudentSubmitQuiz = (quizId: string, answers: Record<string, number>, timeTaken: number) => {
+    const targetQuiz = quizzes.find((q) => q.id === quizId);
+    let calculatedScore = 0;
+    targetQuiz?.questions.forEach((q) => {
+      if (answers[q.id] === q.correctOptionIndex) {
+        calculatedScore += q.marks;
+      }
+    });
+
+    const newAttempt: QuizAttempt = {
+      id: `qa-${Date.now()}`,
+      quizId,
+      quizTitle: targetQuiz?.title || 'Quiz',
+      studentId: currentUser.id,
+      studentName: currentUser.name,
+      score: calculatedScore,
+      totalMarks: targetQuiz?.totalMarks || 12,
+      answers,
+      submittedAt: new Date().toISOString(),
+      timeTakenSeconds: timeTaken
+    };
+    setQuizAttempts((prev) => [newAttempt, ...prev]);
+
+    // Sync with backend API
+    fetch(`/api/quizzes/${quizId}/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        studentId: currentUser.id,
+        studentName: currentUser.name,
+        answers,
+        timeTakenSeconds: timeTaken
+      })
+    }).catch((err) => console.log('Backend sync skipped:', err));
   };
 
   return (
@@ -126,6 +230,8 @@ export function App() {
         onOpenProfile={() => setIsProfileOpen(true)}
         onSwitchRole={handleSwitchRole}
         notifications={notifications}
+        onOpenAI={() => setIsAIOpen(true)}
+        onMarkNotificationsRead={handleMarkNotificationsRead}
       />
 
       {/* Main Body */}
@@ -212,6 +318,7 @@ export function App() {
             quizAttempts={quizAttempts}
             attendance={attendance}
             onSubmitAssignment={handleStudentSubmitAssignment}
+            onSubmitQuiz={handleStudentSubmitQuiz}
           />
         )}
 
@@ -242,6 +349,13 @@ export function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         currentUser={currentUser}
+      />
+
+      {/* Gemini AI Assistant Modal */}
+      <AIAssistantModal
+        isOpen={isAIOpen}
+        onClose={() => setIsAIOpen(false)}
+        userRole={currentUser.role}
       />
     </div>
   );

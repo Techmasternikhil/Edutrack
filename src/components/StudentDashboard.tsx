@@ -21,6 +21,7 @@ interface StudentDashboardProps {
   quizAttempts: QuizAttempt[];
   attendance: AttendanceRecord[];
   onSubmitAssignment: (assignmentId: string, assignmentTitle: string, courseCode: string, fileName: string) => void;
+  onSubmitQuiz?: (quizId: string, answers: Record<string, number>, timeTaken: number) => void;
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -31,13 +32,20 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   quizzes,
   quizAttempts,
   attendance,
-  onSubmitAssignment
+  onSubmitAssignment,
+  onSubmitQuiz
 }) => {
   const [selectedAsgId, setSelectedAsgId] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
 
+  // Quiz state
+  const [takingQuiz, setTakingQuiz] = useState<Quiz | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<Record<string, number>>({});
+  const [quizSubmittedResult, setQuizSubmittedResult] = useState<{ score: number; totalMarks: number } | null>(null);
+
   const mySubmissions = submissions.filter((s) => s.studentId === currentStudent.id);
   const myAttendance = attendance.filter((a) => a.studentId === currentStudent.id);
+  const myQuizAttempts = quizAttempts.filter((q) => q.studentId === currentStudent.id);
   const presentCount = myAttendance.filter((a) => a.status === 'PRESENT').length;
   const attendanceRate = myAttendance.length > 0 ? Math.round((presentCount / myAttendance.length) * 100) : 100;
 
@@ -50,6 +58,27 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
     onSubmitAssignment(asg.id, asg.title, asg.courseCode, fileName);
     setSelectedAsgId(null);
     setFileName('');
+  };
+
+  const handleFinishQuiz = () => {
+    if (!takingQuiz) return;
+    let score = 0;
+    takingQuiz.questions.forEach((q) => {
+      if (quizAnswers[q.id] === q.correctOptionIndex) {
+        score += q.marks;
+      }
+    });
+
+    if (onSubmitQuiz) {
+      onSubmitQuiz(takingQuiz.id, quizAnswers, 320);
+    }
+
+    setQuizSubmittedResult({ score, totalMarks: takingQuiz.totalMarks });
+    setTimeout(() => {
+      setTakingQuiz(null);
+      setQuizAnswers({});
+      setQuizSubmittedResult(null);
+    }, 3000);
   };
 
   return (
@@ -184,37 +213,171 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         </div>
 
-        {/* Enrolled Courses */}
-        <div className="p-5 rounded-2xl glass-panel space-y-4">
-          <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-indigo-400" />
-            <span>Enrolled Subjects</span>
-          </h3>
+        {/* Enrolled Courses & Quizzes */}
+        <div className="space-y-6">
+          {/* Online Quizzes */}
+          <div className="p-5 rounded-2xl glass-panel space-y-4">
+            <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <Award className="w-4 h-4 text-purple-400" />
+              <span>Available Quizzes & Assessments</span>
+            </h3>
 
-          <div className="space-y-3">
-            {courses.map((c) => (
-              <div
-                key={c.id}
-                className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-white">{c.title}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono">
-                      {c.code}
-                    </span>
+            <div className="space-y-3">
+              {quizzes.map((quiz) => {
+                const attempt = myQuizAttempts.find((qa) => qa.quizId === quiz.id);
+
+                return (
+                  <div
+                    key={quiz.id}
+                    className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-white">{quiz.title}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 font-mono">
+                          {quiz.courseCode}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-1">{quiz.description}</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        Duration: {quiz.durationMinutes} mins • Total: {quiz.totalMarks} Marks
+                      </div>
+                    </div>
+
+                    <div>
+                      {attempt ? (
+                        <span className="px-2.5 py-1 rounded bg-purple-500/20 text-purple-300 font-bold text-xs">
+                          Score: {attempt.score} / {attempt.totalMarks}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setTakingQuiz(quiz);
+                            setQuizAnswers({});
+                          }}
+                          className="px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold cursor-pointer shadow"
+                        >
+                          Start Quiz
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-1">Instructor: {c.facultyName}</div>
-                  <div className="text-[10px] text-slate-500">{c.schedule} • {c.room}</div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Enrolled Courses */}
+          <div className="p-5 rounded-2xl glass-panel space-y-4">
+            <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-indigo-400" />
+              <span>Enrolled Subjects</span>
+            </h3>
+
+            <div className="space-y-3">
+              {courses.map((c) => (
+                <div
+                  key={c.id}
+                  className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-white">{c.title}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono">
+                        {c.code}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">Instructor: {c.facultyName}</div>
+                    <div className="text-[10px] text-slate-500">{c.schedule} • {c.room}</div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs font-semibold text-slate-300">{c.credits} Credits</span>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-semibold text-slate-300">{c.credits} Credits</span>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Quiz Modal */}
+      {takingQuiz && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in">
+          <div className="relative w-full max-w-xl glass-panel rounded-2xl p-6 border border-purple-500/30 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white">{takingQuiz.title}</h3>
+                <p className="text-xs text-slate-400">{takingQuiz.description}</p>
+              </div>
+              <span className="text-xs font-mono text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+                {takingQuiz.durationMinutes} Mins
+              </span>
+            </div>
+
+            {quizSubmittedResult ? (
+              <div className="p-8 text-center space-y-3 animate-in zoom-in-95">
+                <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
+                <h4 className="text-lg font-bold text-white">Quiz Attempt Completed!</h4>
+                <p className="text-sm text-slate-300">
+                  Your Score:{' '}
+                  <span className="text-emerald-400 font-black text-xl">
+                    {quizSubmittedResult.score} / {quizSubmittedResult.totalMarks}
+                  </span>
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+                  {takingQuiz.questions.map((q, qIndex) => (
+                    <div key={q.id} className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                      <p className="text-xs font-semibold text-slate-200">
+                        {qIndex + 1}. {q.question || q.text}{' '}
+                        <span className="text-purple-400 font-normal">({q.marks} pts)</span>
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                        {q.options.map((opt, optIdx) => {
+                          const isSelected = quizAnswers[q.id] === optIdx;
+                          return (
+                            <button
+                              key={optIdx}
+                              type="button"
+                              onClick={() => setQuizAnswers({ ...quizAnswers, [q.id]: optIdx })}
+                              className={`p-2.5 rounded-lg text-left text-xs transition-colors cursor-pointer border ${
+                                isSelected
+                                  ? 'bg-purple-600/30 border-purple-500 text-white font-semibold'
+                                  : 'bg-slate-800/40 border-slate-700/60 text-slate-300 hover:bg-slate-800'
+                              }`}
+                            >
+                              {opt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setTakingQuiz(null)}
+                    className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFinishQuiz}
+                    className="px-5 py-2 rounded-xl text-xs font-bold bg-purple-600 hover:bg-purple-500 text-white shadow-md cursor-pointer"
+                  >
+                    Submit Answers
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

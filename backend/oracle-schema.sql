@@ -58,8 +58,8 @@ CREATE TABLE parents (
 -- 4. PARENT REVIEWS TABLE
 CREATE TABLE parent_reviews (
     review_id VARCHAR2(50) PRIMARY KEY,
-    parent_id VARCHAR2(50) REFERENCES parents(parent_id) ON DELETE CASCADE,
-    student_id VARCHAR2(50) REFERENCES students(student_id) ON DELETE CASCADE,
+    parent_id VARCHAR2(50) REFERENCES users(user_id) ON DELETE CASCADE,
+    student_id VARCHAR2(50) REFERENCES users(user_id) ON DELETE CASCADE,
     course_id VARCHAR2(50),
     category VARCHAR2(30) DEFAULT 'GENERAL',
     title VARCHAR2(200) NOT NULL,

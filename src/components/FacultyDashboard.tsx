@@ -37,8 +37,17 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
   const [replyReviewId, setReplyReviewId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState<string>('');
 
-  const pendingSubmissions = submissions.filter((s) => s.status === 'PENDING');
-  const gradedSubmissions = submissions.filter((s) => s.status === 'GRADED');
+  // Courses taught by this faculty member
+  const facultyCourseCodes = courses
+    .filter((c) => c.facultyId === currentFaculty.id || c.facultyName === currentFaculty.name)
+    .map((c) => c.code);
+
+  const relevantSubmissions = facultyCourseCodes.length > 0
+    ? submissions.filter((s) => !s.courseCode || facultyCourseCodes.includes(s.courseCode))
+    : submissions;
+
+  const pendingSubmissions = relevantSubmissions.filter((s) => s.status === 'PENDING');
+  const gradedSubmissions = relevantSubmissions.filter((s) => s.status === 'GRADED');
 
   const handleGradeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +95,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           </div>
 
           <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-            {submissions.map((sub) => (
+            {relevantSubmissions.map((sub) => (
               <div
                 key={sub.id}
                 className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/60 hover:border-slate-600 transition-colors"

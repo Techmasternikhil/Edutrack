@@ -5,7 +5,9 @@ import {
   Bell,
   Search,
   UserCheck,
-  ChevronDown
+  ChevronDown,
+  Sparkles,
+  Check
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -13,13 +15,17 @@ interface HeaderProps {
   onOpenProfile: () => void;
   onSwitchRole: (role: UserRole) => void;
   notifications: Notification[];
+  onOpenAI?: () => void;
+  onMarkNotificationsRead?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onOpenProfile,
   onSwitchRole,
-  notifications
+  notifications,
+  onOpenAI,
+  onMarkNotificationsRead
 }) => {
   const [showRoleMenu, setShowRoleMenu] = React.useState(false);
   const [showNotifications, setShowNotifications] = React.useState(false);
@@ -63,8 +69,20 @@ export const Header: React.FC<HeaderProps> = ({
         />
       </div>
 
-      {/* Right Controls: Role Switcher, Notifications, Profile */}
+      {/* Right Controls: Role Switcher, AI Assistant, Notifications, Profile */}
       <div className="flex items-center gap-3">
+        {/* Gemini AI Assistant Button */}
+        {onOpenAI && (
+          <button
+            onClick={onOpenAI}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-500/30 text-xs font-semibold text-indigo-200 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
+            title="Ask EduTrack AI Assistant"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+            <span className="hidden sm:inline">Ask AI</span>
+          </button>
+        )}
+
         {/* Quick Role Switcher */}
         <div className="relative">
           <button
@@ -106,7 +124,13 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Notifications Icon */}
         <div className="relative">
           <button
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => {
+              const nextState = !showNotifications;
+              setShowNotifications(nextState);
+              if (nextState && unreadCount > 0 && onMarkNotificationsRead) {
+                onMarkNotificationsRead();
+              }
+            }}
             className="p-2 rounded-lg bg-slate-800/60 hover:bg-slate-800 border border-slate-700 text-slate-300 hover:text-white relative cursor-pointer transition-colors"
           >
             <Bell className="w-4 h-4" />
