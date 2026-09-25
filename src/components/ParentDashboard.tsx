@@ -8,12 +8,12 @@ import {
   HelpCircle,
   MessageSquarePlus,
   Send,
-  Sparkles,
   TrendingUp,
   AlertTriangle,
   CheckCircle2,
   Clock,
-  BookOpen
+  BookOpen,
+  HeartHandshake
 } from 'lucide-react';
 import { APP_CONFIG } from '../config/constants';
 import {
@@ -144,7 +144,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
       <div className="p-6 rounded-2xl glass-panel bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-slate-900 border border-purple-500/20 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-purple-400 text-xs font-semibold tracking-wide uppercase">
-            <Sparkles className="w-4 h-4" />
+            <HeartHandshake className="w-4 h-4" />
             <span>Parent Academic Oversight Portal</span>
           </div>
           <h1 className="text-xl md:text-2xl font-bold text-white mt-1">

@@ -4,12 +4,8 @@ import {
   Users,
   BookOpen,
   ShieldAlert,
-  Activity,
   HeartHandshake,
   MessageSquareQuote,
-  TrendingUp,
-  Server,
-  UserCheck,
   Check,
   X,
   Clock,
@@ -17,14 +13,8 @@ import {
   UserPlus,
   Shield,
   Eye,
-  Building,
   School,
-  FileText,
-  Award,
-  Video,
-  Database,
-  CalendarCheck,
-  Plus
+  FileText
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -46,7 +36,6 @@ interface AdminDashboardProps {
     classTeacherId: string;
   }) => void;
   onApproveUser?: (userId: string, status: 'APPROVED' | 'REJECTED') => void;
-  onOpenOracleSchemaModal?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -60,8 +49,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRejectRegistration,
   onCreateAdmin,
   onCreateClass,
-  onApproveUser,
-  onOpenOracleSchemaModal
+  onApproveUser
 }) => {
   const [filterRole, setFilterRole] = useState<string>('ALL');
 
@@ -324,12 +312,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                          <span>{req.userName}</span>
+                          <span>{req.userName || req.applicantName}</span>
                           <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
                             {req.requestedRole}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-400 font-mono">{req.userEmail}</div>
+                        <div className="text-[11px] text-slate-400 font-mono">{req.userEmail || req.applicantEmail}</div>
                       </div>
                     </div>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold shrink-0">
@@ -620,7 +608,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <div className="grid grid-cols-2 gap-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <div>
                   <span className="text-slate-500 block text-[10px]">Applicant Name</span>
-                  <strong className="text-white text-xs">{viewingRequest.userName}</strong>
+                  <strong className="text-white text-xs">{viewingRequest.userName || viewingRequest.applicantName}</strong>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">Applied Role</span>
@@ -628,7 +616,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">Email</span>
-                  <span className="font-mono text-slate-300">{viewingRequest.userEmail}</span>
+                  <span className="font-mono text-slate-300">{viewingRequest.userEmail || viewingRequest.applicantEmail}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">Class</span>

@@ -18,15 +18,13 @@ import {
   CalendarCheck,
   CheckCircle2,
   FileCheck2,
-  HelpCircle,
   TrendingUp,
-  Upload,
   Video,
   Play,
   FileText,
   AlertTriangle,
   Clock,
-  ExternalLink
+  Upload
 } from 'lucide-react';
 
 interface StudentDashboardProps {

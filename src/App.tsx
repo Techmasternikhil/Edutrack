@@ -36,14 +36,10 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { FacultyDashboard } from './components/FacultyDashboard';
 import { StudentDashboard } from './components/StudentDashboard';
 import {
-  LayoutDashboard,
   GraduationCap,
   BookOpen,
   HeartHandshake,
-  ShieldAlert,
-  Sparkles,
-  ExternalLink,
-  Shield
+  ShieldAlert
 } from 'lucide-react';
 
 export function App() {
@@ -131,7 +127,7 @@ export function App() {
       regNumber: data.regNumber || data.studentRegNumber,
       childStudentIds: data.childStudentIds,
       classId: resolvedClass?.id,
-      className: resolvedClass?.name,
+      className: resolvedClass ? `${resolvedClass.className || resolvedClass.name} (${resolvedClass.section})` : undefined,
       phone: data.phone,
       semester: data.role === 'STUDENT' ? 1 : undefined,
       gpa: data.role === 'STUDENT' ? 3.50 : undefined,
@@ -153,7 +149,8 @@ export function App() {
       requestedRole: data.role,
       status: reqStatus,
       classId: resolvedClass?.id,
-      className: resolvedClass?.name,
+      className: resolvedClass ? `${resolvedClass.className || resolvedClass.name} (${resolvedClass.section})` : undefined,
+      classSection: resolvedClass?.section,
       classTeacherId: resolvedClass?.classTeacherId,
       classTeacherName: resolvedClass?.classTeacherName,
       studentId: data.childStudentIds ? data.childStudentIds[0] : undefined,
@@ -532,14 +529,6 @@ export function App() {
       })
       .catch((err) => console.log('Running in local mock store:', err));
   }, []);
-
-  // Switch role helper
-  const handleSwitchRole = (newRole: UserRole) => {
-    const targetUser = users.find((u) => u.role === newRole);
-    if (targetUser) {
-      setCurrentUser(targetUser);
-    }
-  };
 
   // Mark all notifications as read
   const handleMarkNotificationsRead = () => {

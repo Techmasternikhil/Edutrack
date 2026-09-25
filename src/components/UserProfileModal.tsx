@@ -1,6 +1,6 @@
 import React from 'react';
 import { User } from '../types';
-import { X, Mail, Shield, BookOpen, UserCheck, HeartHandshake, LogOut } from 'lucide-react';
+import { X, Mail, Shield, BookOpen, HeartHandshake, LogOut } from 'lucide-react';
 
 interface UserProfileModalProps {
   isOpen: boolean;

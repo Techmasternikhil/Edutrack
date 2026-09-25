@@ -16,7 +16,7 @@
 2. **Parental Academic Transparency**: Non-intrusive monitoring granting guardians real-time visibility into attendance compliance (statutory <75% automated alerting), cumulative GPA, and assignment score distributions without granting access to internal staff records.
 3. **Automated Assessment & Evaluation**: Real-time multiple-choice quiz evaluation engine and rubric-based coursework submission grading with instant feedback loops.
 4. **Institutional Security Governance**: Self-service onboarding with multi-tier Administrator verification queues and tamper-evident audit logging.
-5. **Generative Academic AI Assistant**: Google Gemini 2.5 Flash integrated directly for contextual syllabus explanations, PL/SQL query assistance, and study planning.
+5. **Class Teacher Onboarding Pipeline**: Two-stage registration approval workflow with dedicated faculty and administrative oversight.
 
 ---
 
@@ -38,7 +38,7 @@ graph TB
             ParentPortal[ParentDashboard.tsx]
         end
 
-        Modals[AIAssistantModal.tsx & UserProfileModal.tsx]
+        Modals[UserProfileModal.tsx]
     end
 
     subgraph "API & Controller Middleware (server.ts)"
@@ -48,7 +48,6 @@ graph TB
         GradingCtrl[Submission & Evaluation Engine]
         ParentCtrl[Parent Inquiry & Monitoring Service]
         AuditCtrl[Security Audit Logging Engine]
-        GeminiCtrl[Google GenAI: Gemini 2.5 Flash]
     end
 
     subgraph "Persistence & Schema Layer"
@@ -75,7 +74,6 @@ graph TB
     Router --> GradingCtrl
     Router --> ParentCtrl
     Router --> AuditCtrl
-    Router --> GeminiCtrl
 
     AuthCtrl --> MemStore
     AcademicCtrl --> MemStore
@@ -106,7 +104,6 @@ EduTrack LMS enforces strict privilege boundaries. No user can view, mutate, or 
 | **Child Academic Progress Tracking** | ❌ (Denied) | ❌ (Denied) | ❌ (Denied) | ✅ (Linked Child Only) |
 | **Submit Parent Inquiries / Remarks** | ❌ (Denied) | ❌ (Denied) | ❌ (Denied) | ✅ (Authorized Child) |
 | **Reply to Parent Inquiries** | ❌ (Denied) | ✅ (Assigned Courses) | ❌ (Denied) | ❌ (Denied) |
-| **Gemini AI Academic Assistant** | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -407,8 +404,7 @@ All endpoints are hosted by Express (`server.ts`) and execute under the `/api` p
 - `GET /api/parent/reviews` & `POST /api/parent/reviews`: Parent inquiries categorized by `ACADEMIC_CONCERN`, `ATTENDANCE`, `APPRECIATION`, or `GENERAL`.
 - `PUT /api/parent/reviews/:id/reply`: Faculty response dispatcher.
 
-### System Intelligence & Auditing
-- `POST /api/ai/assistant`: Gemini 2.5 Flash academic assistant endpoint with intelligent fallback responses.
+### System Auditing & Backend Source
 - `GET /api/audit-logs`: Institutional security activity log.
 - `GET /api/backend-code`: Serves complete production Oracle SQL DDL script and Spring Boot microservice files.
 
@@ -459,9 +455,6 @@ npm start
 
 ### Environment Variables (`.env`)
 ```env
-# Optional: Google Gemini API Key for live AI Academic Assistant
-GEMINI_API_KEY="your-gemini-api-key"
-
-# Port (Default: 3000)
+# Server Port (Default: 3000)
 PORT=3000
 ```

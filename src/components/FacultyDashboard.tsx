@@ -35,16 +35,15 @@ import {
   Clock,
   ExternalLink,
   ChevronRight,
-  TrendingUp,
   BarChart2,
   Trash2,
   Send,
   Eye,
   Check,
-  UserCheck2,
   X,
   School,
-  HeartHandshake
+  HeartHandshake,
+  UserCheck2
 } from 'lucide-react';
 
 interface FacultyDashboardProps {
@@ -1253,12 +1252,12 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                         </div>
                         <div>
                           <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <span>{req.userName}</span>
+                            <span>{req.userName || req.applicantName}</span>
                             <span className="text-[10px] px-1.5 py-0.2 rounded font-semibold bg-slate-800 text-slate-300 border border-slate-700">
                               {req.requestedRole}
                             </span>
                           </div>
-                          <div className="text-[11px] text-slate-400 font-mono">{req.userEmail}</div>
+                          <div className="text-[11px] text-slate-400 font-mono">{req.userEmail || req.applicantEmail}</div>
                         </div>
                       </div>
 
@@ -1368,7 +1367,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
               <div className="grid grid-cols-2 gap-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <div>
                   <span className="text-slate-500 block text-[10px]">Applicant Name</span>
-                  <strong className="text-white text-xs">{viewingRequest.userName}</strong>
+                  <strong className="text-white text-xs">{viewingRequest.userName || viewingRequest.applicantName}</strong>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">Applied Role</span>
@@ -1376,7 +1375,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">Email</span>
-                  <span className="font-mono text-slate-300">{viewingRequest.userEmail}</span>
+                  <span className="font-mono text-slate-300">{viewingRequest.userEmail || viewingRequest.applicantEmail}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block text-[10px]">Phone</span>

@@ -4,10 +4,6 @@ import {
   GraduationCap,
   Bell,
   Search,
-  UserCheck,
-  ChevronDown,
-  Sparkles,
-  Check,
   LogOut,
   Shield
 } from 'lucide-react';

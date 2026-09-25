@@ -4,12 +4,10 @@ import {
   GraduationCap,
   Shield,
   BookOpen,
-  UserCheck,
   HeartHandshake,
   Lock,
   Mail,
   ArrowRight,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   UserPlus,
@@ -17,8 +15,7 @@ import {
   Building,
   Hash,
   School,
-  UserCheck2,
-  HelpCircle
+  UserCheck2
 } from 'lucide-react';
 
 interface LoginScreenProps {
@@ -174,7 +171,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, classes = [], o
     } else if (selectedRole === 'STUDENT') {
       payload.department = department;
       payload.classId = selectedClassId;
-      payload.className = targetClass?.name || 'B.Tech CSE - Semester 4 Sec A';
+      payload.className = targetClass ? `${targetClass.className || targetClass.name} (${targetClass.section})` : 'B.Tech CSE - Semester 4 (Sec A)';
       payload.regNumber = regNumber.trim() || `CS-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`;
     } else if (selectedRole === 'PARENT') {
       const selectedChild = activeStudents.find((s) => s.id === selectedChildId);
@@ -183,7 +180,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, classes = [], o
       payload.studentRegNumber = selectedChild?.regNumber || 'STU-ID';
       payload.relationship = relationship;
       payload.classId = selectedChild?.classId || selectedClassId;
-      payload.className = selectedChild?.className || targetClass?.name;
+      payload.className = selectedChild?.className || (targetClass ? `${targetClass.className || targetClass.name} (${targetClass.section})` : undefined);
     }
 
     const result = onRegister(payload);
@@ -197,7 +194,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, classes = [], o
     setTwoStageNotice({
       role: selectedRole,
       applicantName: name.trim(),
-      className: targetClass?.name,
+      className: targetClass ? `${targetClass.className || targetClass.name} (${targetClass.section})` : undefined,
       teacherName: targetClass?.classTeacherName || 'Assigned Class Teacher'
     });
 
@@ -588,7 +585,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ users, classes = [], o
                         >
                           {classes.map((cls) => (
                             <option key={cls.id} value={cls.id}>
-                              {cls.name} ({cls.section}) • Teacher: {cls.classTeacherName}
+                              {cls.className || cls.name} ({cls.section}) • Teacher: {cls.classTeacherName}
                             </option>
                           ))}
                         </select>
