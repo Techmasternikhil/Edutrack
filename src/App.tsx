@@ -50,7 +50,13 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem('edutrack_session_user');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u.name === 'Arun' && u.email === 'admin@edutrack.edu') {
+          u.name = 'Dr. Rajesh Verma';
+        }
+        return u;
+      }
     } catch (e) {
       // ignore
     }
@@ -545,7 +551,50 @@ export function App() {
           fetch('/api/academic-classes').then((r) => r.json()).catch(() => null),
           fetch('/api/admin/registration-requests').then((r) => r.json()).catch(() => null)
         ]).then(([u, c, mats, asg, subs, qz, qa, att, notifs, revs, aClasses, regReqs]) => {
-          if (u && Array.isArray(u) && u.length > 0) setUsers(u);
+          if (u && Array.isArray(u) && u.length > 0) {
+            // Normalize any legacy/demo names to authentic Indian names
+            const indianNameMap: Record<string, { name: string; email: string }> = {
+              'usr-admin-1': { name: 'Dr. Rajesh Verma', email: 'admin@edutrack.edu' },
+              'usr-fac-1': { name: 'Prof. Ananya Sharma', email: 'ananya.sharma@edutrack.edu' },
+              'usr-stu-1': { name: 'Aarav Sharma', email: 'aarav.sharma@student.edutrack.edu' },
+              'usr-stu-2': { name: 'Diya Patel', email: 'diya.patel@student.edutrack.edu' },
+              'usr-parent-1': { name: 'Raveendra Sharma', email: 'raveendra.sharma@edutrack.edu' },
+              'usr-parent-2': { name: 'Suresh Patel', email: 'suresh.patel@gmail.com' }
+            };
+
+            const normalizedUsers = u.map((user: User) => {
+              if (indianNameMap[user.id]) {
+                return { ...user, ...indianNameMap[user.id] };
+              }
+              // Replace any generic non-Indian sample names dynamically
+              let cleanName = user.name
+                .replace(/Evelyn Reed/g, 'Ananya Sharma')
+                .replace(/Alex Rivera/g, 'Aarav Sharma')
+                .replace(/Sophia Chen/g, 'Diya Patel')
+                .replace(/David Chen/g, 'Suresh Patel')
+                .replace(/Dean Arthur Pendelton/g, 'Dr. Rajesh Verma')
+                .replace(/Robert Vance/g, 'Dr. Rajesh Verma')
+                .replace(/Diana Prince/g, 'Priya Nair')
+                .replace(/Arun$/g, 'Dr. Rajesh Verma');
+
+              let cleanEmail = user.email
+                .replace(/evelyn\.reed/g, 'ananya.sharma')
+                .replace(/alex\.rivera/g, 'aarav.sharma')
+                .replace(/sophia\.chen/g, 'diya.patel')
+                .replace(/david\.chen/g, 'suresh.patel')
+                .replace(/arthur\.dean\.live/g, 'rajesh.verma')
+                .replace(/diana\.prince/g, 'priya.nair');
+
+              if (user.id === 'usr-parent-1' && cleanName === 'Raveendra') {
+                cleanName = 'Raveendra Sharma';
+                cleanEmail = 'raveendra.sharma@edutrack.edu';
+              }
+
+              return { ...user, name: cleanName, email: cleanEmail };
+            });
+
+            setUsers(normalizedUsers);
+          }
           if (c && Array.isArray(c) && c.length > 0) setCourses(c);
           if (mats && Array.isArray(mats) && mats.length > 0) setMaterials(mats);
           if (asg && Array.isArray(asg) && asg.length > 0) setAssignments(asg);
