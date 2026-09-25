@@ -254,16 +254,16 @@ CREATE TABLE audit_logs (
 
 -- SEED DATA
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
-VALUES ('usr-admin-1', 'Dr. Arthur Mitchell', 'admin@edutrack.edu', '$2a$10$e8K71jL1...', 'ADMIN', 'University Administration');
+VALUES ('usr-admin-1', 'Dr. Rajesh Verma', 'admin@edutrack.edu', '$2a$10$e8K71jL1...', 'ADMIN', 'University Administration');
 
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
-VALUES ('usr-fac-1', 'Prof. Evelyn Reed', 'evelyn.reed@edutrack.edu', '$2a$10$f9M82kM2...', 'FACULTY', 'Computer Science');
+VALUES ('usr-fac-1', 'Prof. Ananya Sharma', 'ananya.sharma@edutrack.edu', '$2a$10$f9M82kM2...', 'FACULTY', 'Computer Science');
 
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
-VALUES ('usr-stu-1', 'Alex Rivera', 'alex.rivera@student.edutrack.edu', '$2a$10$g0N93lN3...', 'STUDENT', 'Computer Science');
+VALUES ('usr-stu-1', 'Aarav Sharma', 'aarav.sharma@student.edutrack.edu', '$2a$10$g0N93lN3...', 'STUDENT', 'Computer Science');
 
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
-VALUES ('usr-stu-2', 'Sophia Chen', 'sophia.chen@student.edutrack.edu', '$2a$10$h1P94mO4...', 'STUDENT', 'Computer Science');
+VALUES ('usr-stu-2', 'Diya Patel', 'diya.patel@student.edutrack.edu', '$2a$10$h1P94mO4...', 'STUDENT', 'Computer Science');
 
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
 VALUES ('usr-parent-1', 'Raveendra', 'raveendra@edutrack.edu', '$2a$10$i2Q95nP5...', 'PARENT', 'Guardian Relations');

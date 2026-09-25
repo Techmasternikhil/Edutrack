@@ -417,7 +417,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
                     <form onSubmit={handleUploadSubmit} className="pt-2 border-t border-slate-700 flex gap-2">
                       <input
                         type="text"
-                        placeholder="Enter file name (e.g. AlexRivera_Project.zip)"
+                        placeholder="Enter file name (e.g. AaravSharma_Project.zip)"
                         value={fileName}
                         onChange={(e) => setFileName(e.target.value)}
                         className="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs text-white placeholder-slate-500"

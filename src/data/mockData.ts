@@ -23,8 +23,8 @@ export const mockAcademicClasses: AcademicClass[] = [
     department: 'Computer Science',
     semester: 4,
     classTeacherId: 'usr-fac-1',
-    classTeacherName: 'Prof. Evelyn Reed',
-    classTeacherEmail: 'evelyn.reed@edutrack.edu'
+    classTeacherName: 'Prof. Ananya Sharma',
+    classTeacherEmail: 'ananya.sharma@edutrack.edu'
   },
   {
     id: 'cls-cse-4b',
@@ -34,8 +34,8 @@ export const mockAcademicClasses: AcademicClass[] = [
     department: 'Computer Science',
     semester: 4,
     classTeacherId: 'usr-fac-1',
-    classTeacherName: 'Prof. Evelyn Reed',
-    classTeacherEmail: 'evelyn.reed@edutrack.edu'
+    classTeacherName: 'Prof. Ananya Sharma',
+    classTeacherEmail: 'ananya.sharma@edutrack.edu'
   },
   {
     id: 'cls-it-6a',
@@ -45,8 +45,8 @@ export const mockAcademicClasses: AcademicClass[] = [
     department: 'Information Technology',
     semester: 6,
     classTeacherId: 'usr-fac-2',
-    classTeacherName: 'Dr. Alan Turing',
-    classTeacherEmail: 'alan.turing@edutrack.edu'
+    classTeacherName: 'Dr. Vikram Sarabhai',
+    classTeacherEmail: 'vikram.sarabhai@edutrack.edu'
   }
 ];
 
@@ -61,7 +61,7 @@ export const mockRegistrationRequests: RegistrationRequest[] = [
     className: 'B.Tech Computer Science — Semester 4 (Sec A)',
     classSection: 'Section A',
     classTeacherId: 'usr-fac-1',
-    classTeacherName: 'Prof. Evelyn Reed',
+    classTeacherName: 'Prof. Ananya Sharma',
     regNumber: 'CS-2026-089',
     department: 'Computer Science',
     status: 'PENDING_TEACHER_REVIEW',
@@ -77,12 +77,12 @@ export const mockRegistrationRequests: RegistrationRequest[] = [
     className: 'B.Tech Computer Science — Semester 4 (Sec A)',
     classSection: 'Section A',
     classTeacherId: 'usr-fac-1',
-    classTeacherName: 'Prof. Evelyn Reed',
+    classTeacherName: 'Prof. Ananya Sharma',
     studentId: 'usr-stu-1',
-    studentName: 'Alex Rivera',
+    studentName: 'Aarav Sharma',
     relationship: 'Father',
     status: 'TEACHER_CONFIRMED',
-    teacherReviewedBy: 'Prof. Evelyn Reed',
+    teacherReviewedBy: 'Prof. Ananya Sharma',
     teacherReviewedAt: '2026-09-24T14:15:00Z',
     teacherReviewReason: 'Verified parent relationship documents and student record matching.',
     createdAt: '2026-09-23T11:00:00Z'
@@ -92,7 +92,7 @@ export const mockRegistrationRequests: RegistrationRequest[] = [
 export const mockUsers: User[] = [
   {
     id: 'usr-admin-1',
-    name: 'Dr. Arthur Mitchell',
+    name: 'Dr. Rajesh Verma',
     email: 'admin@edutrack.edu',
     role: 'ADMIN',
     status: 'APPROVED',
@@ -102,8 +102,8 @@ export const mockUsers: User[] = [
   },
   {
     id: 'usr-fac-1',
-    name: 'Prof. Evelyn Reed',
-    email: 'evelyn.reed@edutrack.edu',
+    name: 'Prof. Ananya Sharma',
+    email: 'ananya.sharma@edutrack.edu',
     role: 'FACULTY',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -115,8 +115,8 @@ export const mockUsers: User[] = [
   },
   {
     id: 'usr-stu-1',
-    name: 'Alex Rivera',
-    email: 'alex.rivera@student.edutrack.edu',
+    name: 'Aarav Sharma',
+    email: 'aarav.sharma@student.edutrack.edu',
     role: 'STUDENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -130,8 +130,8 @@ export const mockUsers: User[] = [
   },
   {
     id: 'usr-stu-2',
-    name: 'Sophia Chen',
-    email: 'sophia.chen@student.edutrack.edu',
+    name: 'Diya Patel',
+    email: 'diya.patel@student.edutrack.edu',
     role: 'STUDENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -155,8 +155,8 @@ export const mockUsers: User[] = [
   },
   {
     id: 'usr-parent-2',
-    name: 'David Chen',
-    email: 'david.chen@outlook.com',
+    name: 'Suresh Patel',
+    email: 'suresh.patel@gmail.com',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -175,7 +175,7 @@ export const mockCourses: Course[] = [
     credits: 4,
     semester: 4,
     facultyId: 'usr-fac-1',
-    facultyName: 'Prof. Evelyn Reed',
+    facultyName: 'Prof. Ananya Sharma',
     enrolledStudentsCount: 42,
     maxCapacity: 50,
     schedule: 'Mon / Wed 10:00 AM - 11:30 AM',
@@ -190,7 +190,7 @@ export const mockCourses: Course[] = [
     credits: 4,
     semester: 4,
     facultyId: 'usr-fac-1',
-    facultyName: 'Prof. Evelyn Reed',
+    facultyName: 'Prof. Ananya Sharma',
     enrolledStudentsCount: 38,
     maxCapacity: 45,
     schedule: 'Tue / Thu 02:00 PM - 03:30 PM',
@@ -205,7 +205,7 @@ export const mockCourses: Course[] = [
     credits: 3,
     semester: 4,
     facultyId: 'usr-fac-1',
-    facultyName: 'Prof. Evelyn Reed',
+    facultyName: 'Prof. Ananya Sharma',
     enrolledStudentsCount: 46,
     maxCapacity: 60,
     schedule: 'Fri 09:00 AM - 12:00 PM',
@@ -306,9 +306,9 @@ export const mockSubmissions: Submission[] = [
     assignmentTitle: 'Implement Distributed Leader Election with Heartbeats',
     courseCode: 'CS-301',
     studentId: 'usr-stu-1',
-    studentName: 'Alex Rivera',
+    studentName: 'Aarav Sharma',
     submittedAt: '2026-09-18T14:22:00Z',
-    fileName: 'AlexRivera_CS301_RaftElection.zip',
+    fileName: 'AaravSharma_CS301_RaftElection.zip',
     status: 'GRADED',
     marksObtained: 94,
     feedback: 'Outstanding consensus failure simulation and robust timeout logic.'
@@ -319,9 +319,9 @@ export const mockSubmissions: Submission[] = [
     assignmentTitle: 'Oracle SQL Execution Plan Analysis & Tuning',
     courseCode: 'CS-305',
     studentId: 'usr-stu-1',
-    studentName: 'Alex Rivera',
+    studentName: 'Aarav Sharma',
     submittedAt: '2026-09-22T09:15:00Z',
-    fileName: 'AlexRivera_QueryOptimization_Report.pdf',
+    fileName: 'AaravSharma_QueryOptimization_Report.pdf',
     status: 'PENDING'
   },
   {
@@ -330,9 +330,9 @@ export const mockSubmissions: Submission[] = [
     assignmentTitle: 'Implement Distributed Leader Election with Heartbeats',
     courseCode: 'CS-301',
     studentId: 'usr-stu-2',
-    studentName: 'Sophia Chen',
+    studentName: 'Diya Patel',
     submittedAt: '2026-09-19T11:05:00Z',
-    fileName: 'SophiaChen_Consensus_Lab.zip',
+    fileName: 'DiyaPatel_Consensus_Lab.zip',
     status: 'GRADED',
     marksObtained: 98,
     feedback: 'Flawless edge case handling and documentation.'
@@ -399,7 +399,7 @@ export const mockQuizAttempts: QuizAttempt[] = [
     quizId: 'qz-1',
     quizTitle: 'Distributed Systems & CAP Theorem Checkpoint',
     studentId: 'usr-stu-1',
-    studentName: 'Alex Rivera',
+    studentName: 'Aarav Sharma',
     score: 20,
     totalMarks: 20,
     answers: { 'q-1': 1, 'q-2': 2, 'q-3': 2, 'q-4': 1 },
@@ -411,7 +411,7 @@ export const mockQuizAttempts: QuizAttempt[] = [
     quizId: 'qz-1',
     quizTitle: 'Distributed Systems & CAP Theorem Checkpoint',
     studentId: 'usr-stu-2',
-    studentName: 'Sophia Chen',
+    studentName: 'Diya Patel',
     score: 20,
     totalMarks: 20,
     answers: { 'q-1': 1, 'q-2': 2, 'q-3': 2, 'q-4': 1 },
@@ -421,23 +421,23 @@ export const mockQuizAttempts: QuizAttempt[] = [
 ];
 
 export const mockAttendance: AttendanceRecord[] = [
-  { id: 'att-1', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-08', status: 'PRESENT' },
-  { id: 'att-2', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-10', status: 'PRESENT' },
-  { id: 'att-3', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-15', status: 'LATE' },
-  { id: 'att-4', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-17', status: 'PRESENT' },
-  { id: 'att-5', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-22', status: 'PRESENT' },
-  { id: 'att-6', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-09', status: 'PRESENT' },
-  { id: 'att-7', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-11', status: 'ABSENT' },
-  { id: 'att-8', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-16', status: 'PRESENT' },
-  { id: 'att-9', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-18', status: 'PRESENT' },
-  { id: 'att-10', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Alex Rivera', date: '2026-09-23', status: 'PRESENT' }
+  { id: 'att-1', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-08', status: 'PRESENT' },
+  { id: 'att-2', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-10', status: 'PRESENT' },
+  { id: 'att-3', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-15', status: 'LATE' },
+  { id: 'att-4', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-17', status: 'PRESENT' },
+  { id: 'att-5', courseId: 'crs-1', courseCode: 'CS-301', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-22', status: 'PRESENT' },
+  { id: 'att-6', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-09', status: 'PRESENT' },
+  { id: 'att-7', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-11', status: 'ABSENT' },
+  { id: 'att-8', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-16', status: 'PRESENT' },
+  { id: 'att-9', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-18', status: 'PRESENT' },
+  { id: 'att-10', courseId: 'crs-2', courseCode: 'CS-305', studentId: 'usr-stu-1', studentName: 'Aarav Sharma', date: '2026-09-23', status: 'PRESENT' }
 ];
 
 export const mockNotifications: Notification[] = [
   {
     id: 'notif-1',
     title: 'Assignment Graded',
-    message: 'Prof. Evelyn Reed graded Alex Rivera\'s submission for CS-301: 94/100.',
+    message: 'Prof. Ananya Sharma graded Aarav Sharma\'s submission for CS-301: 94/100.',
     type: 'GRADE',
     createdAt: '2026-09-19T10:00:00Z',
     isRead: false
@@ -456,19 +456,19 @@ export const mockAuditLogs: AuditLog[] = [
   {
     id: 'log-1',
     timestamp: '2026-09-23T08:15:00Z',
-    performedBy: 'parent.rivera@gmail.com',
+    performedBy: 'raveendra@edutrack.edu',
     role: 'PARENT',
     action: 'PARENT_PORTAL_ACCESS',
-    details: 'Viewed academic activity summary for student Alex Rivera (CS-2024-041)',
+    details: 'Viewed academic activity summary for student Aarav Sharma (CS-2024-041)',
     ipAddress: '192.168.1.45'
   },
   {
     id: 'log-2',
     timestamp: '2026-09-22T14:30:00Z',
-    performedBy: 'evelyn.reed@edutrack.edu',
+    performedBy: 'ananya.sharma@edutrack.edu',
     role: 'FACULTY',
     action: 'ASSIGNMENT_GRADE',
-    details: 'Graded submission for Alex Rivera (Marks: 94)',
+    details: 'Graded submission for Aarav Sharma (Marks: 94)',
     ipAddress: '10.0.4.12'
   }
 ];
@@ -479,14 +479,14 @@ export const mockParentReviews: ParentReview[] = [
     parentId: 'usr-parent-1',
     parentName: 'Raveendra',
     studentId: 'usr-stu-1',
-    studentName: 'Alex Rivera',
+    studentName: 'Aarav Sharma',
     courseId: 'crs-1',
     courseCode: 'CS-301',
     category: 'APPRECIATION',
     title: 'Great progress in Distributed Systems',
-    message: 'Alex really enjoyed the Raft consensus simulation assignment. Thank you Prof. Reed for the detailed feedback!',
+    message: 'Aarav really enjoyed the Raft consensus simulation assignment. Thank you Prof. Ananya Sharma for the detailed feedback!',
     status: 'ACKNOWLEDGED',
-    facultyReply: 'Thank you Raveendra! Alex demonstrated exceptional insight into leader election failover scenarios.',
+    facultyReply: 'Thank you Raveendra! Aarav demonstrated exceptional insight into leader election failover scenarios.',
     createdAt: '2026-09-20T16:00:00Z'
   },
   {
@@ -494,12 +494,12 @@ export const mockParentReviews: ParentReview[] = [
     parentId: 'usr-parent-1',
     parentName: 'Raveendra',
     studentId: 'usr-stu-1',
-    studentName: 'Alex Rivera',
+    studentName: 'Aarav Sharma',
     courseId: 'crs-2',
     courseCode: 'CS-305',
     category: 'ATTENDANCE',
     title: 'Inquiry regarding absence on Sept 11',
-    message: 'Alex had a medical appointment on Sept 11. I submitted the doctor slip to administration and wanted to ensure the attendance record was excused.',
+    message: 'Aarav had a medical appointment on Sept 11. I submitted the doctor slip to administration and wanted to ensure the attendance record was excused.',
     status: 'SUBMITTED',
     createdAt: '2026-09-22T10:15:00Z'
   }

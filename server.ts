@@ -127,8 +127,8 @@ app.post('/api/academic-classes', (req: Request, res: Response) => {
     department: department || 'Computer Science',
     semester: Number(semester) || 1,
     classTeacherId: teacher?.id || 'usr-fac-1',
-    classTeacherName: teacher?.name || 'Prof. Evelyn Reed',
-    classTeacherEmail: teacher?.email || 'evelyn.reed@edutrack.edu'
+    classTeacherName: teacher?.name || 'Prof. Ananya Sharma',
+    classTeacherEmail: teacher?.email || 'ananya.sharma@edutrack.edu'
   };
 
   classesStore.push(newClass);
@@ -188,7 +188,7 @@ app.post('/api/auth/signup', (req: Request, res: Response) => {
   }
 
   const assignedTeacherId = targetClass?.classTeacherId || 'usr-fac-1';
-  const assignedTeacherName = targetClass?.classTeacherName || 'Prof. Evelyn Reed';
+  const assignedTeacherName = targetClass?.classTeacherName || 'Prof. Ananya Sharma';
 
   const newUserId = `usr-${Date.now()}`;
   const newUser: any = {
