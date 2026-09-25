@@ -2,7 +2,6 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
 import {
   mockUsers,
   mockCourses,
@@ -1374,34 +1373,6 @@ public class CourseController {
   });
 });
 
-// Gemini AI Assistant Endpoint
-app.post('/api/ai/assistant', async (req: Request, res: Response) => {
-  try {
-    const { prompt, context } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      return res.status(200).json({
-        text: `[EduTrack AI Assistant] Gemini API key is not configured yet. Here is an automated smart response:\n\nRegarding "${prompt}": In EduTrack LMS, you can easily manage courses, review grades, generate MCQ quizzes, and export performance reports to Excel or PDF!`
-      });
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: `You are the EduTrack AI Academic Assistant embedded in EduTrack LMS.
-Context: ${context || 'General University LMS context'}
-User prompt: ${prompt}
-
-Provide a helpful, precise, structured academic response.`
-    });
-
-    res.json({ text: response.text });
-  } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    res.status(500).json({ error: error.message || 'Error processing AI request' });
-  }
-});
 
 // Start Server with Vite Middleware
 async function startServer() {

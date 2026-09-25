@@ -30,7 +30,6 @@ import {
 } from './data/mockData';
 import { Header } from './components/Header';
 import { UserProfileModal } from './components/UserProfileModal';
-import { AIAssistantModal } from './components/AIAssistantModal';
 import { LoginScreen } from './components/LoginScreen';
 import { ParentDashboard } from './components/ParentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -70,9 +69,7 @@ export function App() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [parentReviews, setParentReviews] = useState<ParentReview[]>(mockParentReviews);
-
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isAIOpen, setIsAIOpen] = useState(false);
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
@@ -880,7 +877,6 @@ export function App() {
         onOpenProfile={() => setIsProfileOpen(true)}
         onLogout={handleLogout}
         notifications={notifications}
-        onOpenAI={() => setIsAIOpen(true)}
         onMarkNotificationsRead={handleMarkNotificationsRead}
       />
 
@@ -998,13 +994,6 @@ export function App() {
         onClose={() => setIsProfileOpen(false)}
         currentUser={currentUser}
         onLogout={handleLogout}
-      />
-
-      {/* Gemini AI Assistant Modal */}
-      <AIAssistantModal
-        isOpen={isAIOpen}
-        onClose={() => setIsAIOpen(false)}
-        userRole={currentUser.role}
       />
     </div>
   );

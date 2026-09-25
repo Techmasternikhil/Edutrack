@@ -17,7 +17,6 @@ interface HeaderProps {
   onOpenProfile: () => void;
   onLogout: () => void;
   notifications: Notification[];
-  onOpenAI?: () => void;
   onMarkNotificationsRead?: () => void;
 }
 
@@ -26,7 +25,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenProfile,
   onLogout,
   notifications,
-  onOpenAI,
   onMarkNotificationsRead
 }) => {
   const [showNotifications, setShowNotifications] = React.useState(false);
@@ -70,19 +68,8 @@ export const Header: React.FC<HeaderProps> = ({
         />
       </div>
 
-      {/* Right Controls: Role Switcher, AI Assistant, Notifications, Profile */}
+      {/* Right Controls: Role Badge, Notifications, Profile */}
       <div className="flex items-center gap-3">
-        {/* Gemini AI Assistant Button */}
-        {onOpenAI && (
-          <button
-            onClick={onOpenAI}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 border border-indigo-500/30 text-xs font-semibold text-indigo-200 transition-all cursor-pointer shadow-sm hover:scale-[1.02]"
-            title="Ask EduTrack AI Assistant"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-            <span className="hidden sm:inline">Ask AI</span>
-          </button>
-        )}
 
         {/* Authenticated Role Badge */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800/80 border border-slate-700/80 text-xs">
