@@ -14,8 +14,10 @@ import {
   Shield,
   Eye,
   School,
-  FileText
+  FileText,
+  Edit3
 } from 'lucide-react';
+import { EditUserModal } from './admin/EditUserModal';
 
 interface AdminDashboardProps {
   users: User[];
@@ -36,6 +38,7 @@ interface AdminDashboardProps {
     classTeacherId: string;
   }) => void;
   onApproveUser?: (userId: string, status: 'APPROVED' | 'REJECTED') => void;
+  onUpdateUser?: (updatedUser: User) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -49,9 +52,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onRejectRegistration,
   onCreateAdmin,
   onCreateClass,
-  onApproveUser
+  onApproveUser,
+  onUpdateUser
 }) => {
   const [filterRole, setFilterRole] = useState<string>('ALL');
+
+  // Edit User Modal state
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   // Modals state
   const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
@@ -449,6 +456,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   >
                     {u.role}
                   </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditingUser(u)}
+                    title={`Edit details for ${u.name}`}
+                    className="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 hover:text-white text-slate-400 border border-slate-700 hover:border-indigo-500 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-medium"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Edit</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -868,6 +885,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <EditUserModal
+          isOpen={Boolean(editingUser)}
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSave={(updatedUser) => {
+            if (onUpdateUser) {
+              onUpdateUser(updatedUser);
+            }
+          }}
+          academicClasses={academicClasses}
+          allStudents={users.filter((u) => u.role === 'STUDENT')}
+        />
       )}
     </div>
   );

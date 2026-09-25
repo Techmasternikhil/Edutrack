@@ -493,6 +493,38 @@ export function App() {
     }
   };
 
+  // Admin edits details of staff, students, or parents
+  const handleAdminUpdateUser = (updatedUser: User) => {
+    setUsers((prev) =>
+      prev.map((u) => (u.id === updatedUser.id ? { ...u, ...updatedUser } : u))
+    );
+
+    // If current logged-in user is updated, update currentUser state as well
+    if (currentUser && currentUser.id === updatedUser.id) {
+      setCurrentUser(updatedUser);
+      localStorage.setItem('edutrack_user', JSON.stringify(updatedUser));
+    }
+
+    // Sync with backend API
+    fetch(`/api/users/${updatedUser.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedUser)
+    }).catch((err) => console.log('Backend user update sync error:', err));
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'User Profile Updated',
+        message: `Records for ${updatedUser.name} (${updatedUser.role}) were modified by Administrator.`,
+        type: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        isRead: false
+      },
+      ...prev
+    ]);
+  };
+
   // Sync initial state from backend on mount if server is running
   useEffect(() => {
     fetch('/api/health')
@@ -973,6 +1005,7 @@ export function App() {
             onCreateAdmin={handleAdminCreateAdmin}
             onCreateClass={handleAdminCreateClass}
             onApproveUser={handleApproveUser}
+            onUpdateUser={handleAdminUpdateUser}
           />
         )}
       </div>
