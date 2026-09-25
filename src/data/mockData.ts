@@ -151,8 +151,8 @@ export const mockUsers: User[] = [
   },
   {
     id: 'usr-parent-1',
-    name: 'Raveendra',
-    email: 'raveendra@edutrack.edu',
+    name: 'Raveendra Sharma',
+    email: 'raveendra.sharma@edutrack.edu',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -462,7 +462,7 @@ export const mockAuditLogs: AuditLog[] = [
   {
     id: 'log-1',
     timestamp: '2026-09-23T08:15:00Z',
-    performedBy: 'raveendra@edutrack.edu',
+    performedBy: 'raveendra.sharma@edutrack.edu',
     role: 'PARENT',
     action: 'PARENT_PORTAL_ACCESS',
     details: 'Viewed academic activity summary for student Aarav Sharma (CS-2024-041)',
@@ -483,7 +483,7 @@ export const mockParentReviews: ParentReview[] = [
   {
     id: 'prev-1',
     parentId: 'usr-parent-1',
-    parentName: 'Raveendra',
+    parentName: 'Raveendra Sharma',
     studentId: 'usr-stu-1',
     studentName: 'Aarav Sharma',
     courseId: 'crs-1',
@@ -492,13 +492,13 @@ export const mockParentReviews: ParentReview[] = [
     title: 'Great progress in Distributed Systems',
     message: 'Aarav really enjoyed the Raft consensus simulation assignment. Thank you Prof. Ananya Sharma for the detailed feedback!',
     status: 'ACKNOWLEDGED',
-    facultyReply: 'Thank you Raveendra! Aarav demonstrated exceptional insight into leader election failover scenarios.',
+    facultyReply: 'Thank you Raveendra Sharma! Aarav demonstrated exceptional insight into leader election failover scenarios.',
     createdAt: '2026-09-20T16:00:00Z'
   },
   {
     id: 'prev-2',
     parentId: 'usr-parent-1',
-    parentName: 'Raveendra',
+    parentName: 'Raveendra Sharma',
     studentId: 'usr-stu-1',
     studentName: 'Aarav Sharma',
     courseId: 'crs-2',

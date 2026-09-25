@@ -266,6 +266,6 @@ INSERT INTO users (user_id, name, email, password_hash, role, department)
 VALUES ('usr-stu-2', 'Diya Patel', 'diya.patel@student.edutrack.edu', '$2a$10$h1P94mO4...', 'STUDENT', 'Computer Science');
 
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
-VALUES ('usr-parent-1', 'Raveendra', 'raveendra@edutrack.edu', '$2a$10$i2Q95nP5...', 'PARENT', 'Guardian Relations');
+VALUES ('usr-parent-1', 'Raveendra Sharma', 'raveendra.sharma@edutrack.edu', '$2a$10$i2Q95nP5...', 'PARENT', 'Guardian Relations');
 
 COMMIT;
