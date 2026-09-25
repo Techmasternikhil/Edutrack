@@ -108,6 +108,43 @@ app.get('/api/academic-classes', (req: Request, res: Response) => {
   res.json(classesStore);
 });
 
+app.post('/api/academic-classes', (req: Request, res: Response) => {
+  const { className, section, department, semester, academicYear, classTeacherId, performedBy, userRole } = req.body;
+  if (!className || !section) {
+    return res.status(400).json({ error: 'Class name and section are required' });
+  }
+
+  // Find class teacher if provided
+  let teacher = usersStore.find((u) => u.id === classTeacherId);
+  if (!teacher) {
+    teacher = usersStore.find((u) => u.role === 'FACULTY');
+  }
+
+  const newClass = {
+    id: `cls-${Date.now()}`,
+    className,
+    section,
+    academicYear: academicYear || '2026-2027',
+    department: department || 'Computer Science',
+    semester: Number(semester) || 1,
+    classTeacherId: teacher?.id || 'usr-fac-1',
+    classTeacherName: teacher?.name || 'Prof. Evelyn Reed',
+    classTeacherEmail: teacher?.email || 'evelyn.reed@edutrack.edu'
+  };
+
+  classesStore.push(newClass);
+
+  if (teacher) {
+    teacher.isClassTeacher = true;
+    teacher.assignedClassId = newClass.id;
+    teacher.assignedClassName = `${newClass.className} (${newClass.section})`;
+  }
+
+  addAuditLog(performedBy || 'Admin', userRole || 'ADMIN', 'CLASS_CREATE', `Created academic class ${newClass.className} (${newClass.section}) assigned to ${newClass.classTeacherName}`);
+
+  res.status(201).json(newClass);
+});
+
 // Self-service Two-Stage Registration / Signup Endpoint (Student & Parent)
 app.post('/api/auth/signup', (req: Request, res: Response) => {
   const { name, email, role, classId, regNumber, studentId, relationship, department } = req.body;

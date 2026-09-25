@@ -407,6 +407,70 @@ export function App() {
     ]);
   };
 
+  // Admin Creates New Academic Class
+  const handleAdminCreateClass = (classData: {
+    className: string;
+    section: string;
+    department: string;
+    semester: number;
+    academicYear: string;
+    classTeacherId: string;
+  }) => {
+    const assignedTeacher = users.find((u) => u.id === classData.classTeacherId);
+
+    const newClass: AcademicClass = {
+      id: `cls-${Date.now()}`,
+      className: classData.className,
+      section: classData.section,
+      academicYear: classData.academicYear,
+      department: classData.department,
+      semester: classData.semester,
+      classTeacherId: classData.classTeacherId,
+      classTeacherName: assignedTeacher?.name || 'Assigned Faculty',
+      classTeacherEmail: assignedTeacher?.email || 'faculty@edutrack.edu'
+    };
+
+    setAcademicClasses((prev) => [...prev, newClass]);
+
+    // Update teacher's assignment state
+    if (assignedTeacher) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === assignedTeacher.id
+            ? {
+                ...u,
+                isClassTeacher: true,
+                assignedClassId: newClass.id,
+                assignedClassName: `${newClass.className} (${newClass.section})`
+              }
+            : u
+        )
+      );
+    }
+
+    fetch('/api/academic-classes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...classData,
+        performedBy: currentUser?.name,
+        userRole: currentUser?.role
+      })
+    }).catch((err) => console.log('Backend create class error:', err));
+
+    setNotifications((prev) => [
+      {
+        id: `notif-${Date.now()}`,
+        title: 'New Academic Class Configured',
+        message: `Class "${classData.className} (${classData.section})" was created with Class Teacher ${assignedTeacher?.name || 'Faculty'}.`,
+        type: 'SYSTEM',
+        createdAt: new Date().toISOString(),
+        isRead: false
+      },
+      ...prev
+    ]);
+  };
+
   // Admin approves or declines account legacy fallback
   const handleApproveUser = (userId: string, status: 'APPROVED' | 'REJECTED') => {
     setUsers((prev) =>
@@ -917,10 +981,12 @@ export function App() {
             courses={courses}
             submissions={submissions}
             parentReviews={parentReviews}
+            academicClasses={academicClasses}
             registrationRequests={registrationRequests}
             onApproveRegistration={handleAdminApproveRegistration}
             onRejectRegistration={handleAdminRejectRegistration}
             onCreateAdmin={handleAdminCreateAdmin}
+            onCreateClass={handleAdminCreateClass}
             onApproveUser={handleApproveUser}
           />
         )}

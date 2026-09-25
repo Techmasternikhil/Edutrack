@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Course, ParentReview, Submission, RegistrationRequest } from '../types';
+import { User, Course, ParentReview, Submission, RegistrationRequest, AcademicClass } from '../types';
 import {
   Users,
   BookOpen,
@@ -23,7 +23,8 @@ import {
   Award,
   Video,
   Database,
-  CalendarCheck
+  CalendarCheck,
+  Plus
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -31,10 +32,19 @@ interface AdminDashboardProps {
   courses: Course[];
   submissions: Submission[];
   parentReviews: ParentReview[];
+  academicClasses?: AcademicClass[];
   registrationRequests?: RegistrationRequest[];
   onApproveRegistration?: (requestId: string) => void;
   onRejectRegistration?: (requestId: string, reason: string) => void;
   onCreateAdmin?: (adminData: { name: string; email: string; department?: string }) => void;
+  onCreateClass?: (classData: {
+    className: string;
+    section: string;
+    department: string;
+    semester: number;
+    academicYear: string;
+    classTeacherId: string;
+  }) => void;
   onApproveUser?: (userId: string, status: 'APPROVED' | 'REJECTED') => void;
   onOpenOracleSchemaModal?: () => void;
 }
@@ -44,10 +54,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   courses,
   submissions,
   parentReviews,
+  academicClasses = [],
   registrationRequests = [],
   onApproveRegistration,
   onRejectRegistration,
   onCreateAdmin,
+  onCreateClass,
   onApproveUser,
   onOpenOracleSchemaModal
 }) => {
@@ -59,6 +71,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [newAdminDept, setNewAdminDept] = useState('Academic Affairs');
   const [adminCreateMsg, setAdminCreateMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Add Class Modal state
+  const [isAddClassOpen, setIsAddClassOpen] = useState(false);
+  const [newClassName, setNewClassName] = useState('B.Tech Artificial Intelligence & Data Science');
+  const [newClassSection, setNewClassSection] = useState('Section A');
+  const [newClassDept, setNewClassDept] = useState('Computer Science & Engineering');
+  const [newClassSem, setNewClassSem] = useState(1);
+  const [newClassYear, setNewClassYear] = useState('2026-2027');
+  const facultyList = users.filter((u) => u.role === 'FACULTY');
+  const [selectedClassTeacherId, setSelectedClassTeacherId] = useState(facultyList[0]?.id || 'usr-fac-1');
+  const [classCreateSuccess, setClassCreateSuccess] = useState<string | null>(null);
 
   const [viewingRequest, setViewingRequest] = useState<RegistrationRequest | null>(null);
   const [rejectingRequest, setRejectingRequest] = useState<RegistrationRequest | null>(null);
@@ -108,6 +131,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const handleCreateClassSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClassName.trim() || !newClassSection.trim()) return;
+
+    if (onCreateClass) {
+      onCreateClass({
+        className: newClassName.trim(),
+        section: newClassSection.trim(),
+        department: newClassDept.trim(),
+        semester: Number(newClassSem) || 1,
+        academicYear: newClassYear.trim(),
+        classTeacherId: selectedClassTeacherId
+      });
+      setClassCreateSuccess(`Class "${newClassName} (${newClassSection})" created and assigned to Class Teacher!`);
+      setTimeout(() => {
+        setIsAddClassOpen(false);
+        setClassCreateSuccess(null);
+      }, 1500);
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in">
       {/* Top Banner */}
@@ -121,19 +165,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             University Administration Console
           </h1>
           <p className="text-xs text-slate-300 mt-1">
-            Overseeing RBAC permissions, course rosters, two-stage registration pipeline, and institutional security audit.
+            Overseeing RBAC permissions, academic classes, course rosters, and institutional security.
           </p>
         </div>
 
-        {/* Admin Quick Action Button: Add Administrator */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Admin Quick Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setIsAddClassOpen(true);
+              setClassCreateSuccess(null);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-600/20 cursor-pointer"
+          >
+            <School className="w-4 h-4" />
+            <span>+ Add Academic Class</span>
+          </button>
+
           <button
             type="button"
             onClick={() => {
               setIsAddAdminOpen(true);
               setAdminCreateMsg(null);
             }}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-rose-600/20 cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 cursor-pointer"
           >
             <UserPlus className="w-4 h-4" />
             <span>+ Add Administrator</span>
@@ -685,6 +741,143 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Confirm Rejection
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Academic Class Modal */}
+      {isAddClassOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-indigo-500/40 rounded-3xl p-6 sm:p-8 max-w-lg w-full space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2 text-indigo-400">
+                <School className="w-5 h-5" />
+                <h3 className="text-sm font-bold text-white">Create New Academic Class / Batch</h3>
+              </div>
+              <button
+                onClick={() => setIsAddClassOpen(false)}
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Define the academic program, section, and assign a dedicated <strong>Class Teacher</strong> responsible for first-stage student and parent registration verification.
+            </p>
+
+            {classCreateSuccess && (
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2">
+                <Check className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>{classCreateSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleCreateClassSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Class / Program Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. B.Tech Computer Science"
+                  value={newClassName}
+                  onChange={(e) => setNewClassName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Section *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Section A"
+                    value={newClassSection}
+                    onChange={(e) => setNewClassSection(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Semester
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={newClassSem}
+                    onChange={(e) => setNewClassSem(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={newClassDept}
+                    onChange={(e) => setNewClassDept(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                    Academic Year
+                  </label>
+                  <input
+                    type="text"
+                    value={newClassYear}
+                    onChange={(e) => setNewClassYear(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Assign Class Teacher (Faculty) *
+                </label>
+                <select
+                  value={selectedClassTeacherId}
+                  onChange={(e) => setSelectedClassTeacherId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                >
+                  {facultyList.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name} ({f.department || 'Faculty'}) • {f.email}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  This faculty member will receive and verify all student and parent registrations for this class.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddClassOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md cursor-pointer"
+                >
+                  Create Class & Assign Teacher
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
