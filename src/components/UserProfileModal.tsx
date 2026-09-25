@@ -1,17 +1,19 @@
 import React from 'react';
 import { User } from '../types';
-import { X, Mail, Shield, BookOpen, UserCheck, HeartHandshake } from 'lucide-react';
+import { X, Mail, Shield, BookOpen, UserCheck, HeartHandshake, LogOut } from 'lucide-react';
 
 interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUser: User;
+  onLogout?: () => void;
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   isOpen,
   onClose,
-  currentUser
+  currentUser,
+  onLogout
 }) => {
   if (!isOpen) return null;
 
@@ -91,7 +93,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex items-center justify-between pt-4 border-t border-slate-800">
+          {onLogout ? (
+            <button
+              onClick={() => {
+                onClose();
+                onLogout();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
+            </button>
+          ) : <div />}
+
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors cursor-pointer"

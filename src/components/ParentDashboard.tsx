@@ -48,7 +48,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
   reviews,
   onSubmitReview
 }) => {
-  // Linked children
+  // Linked children strictly limited to this parent's authorized IDs
   const linkedChildren = allUsers.filter(
     (u) => u.role === 'STUDENT' && currentParent.childStudentIds?.includes(u.id)
   );
@@ -56,6 +56,13 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
     linkedChildren[0]?.id || ''
   );
+
+  // Keep selectedStudentId in sync if parent changes
+  React.useEffect(() => {
+    if (linkedChildren.length > 0 && !linkedChildren.some((c) => c.id === selectedStudentId)) {
+      setSelectedStudentId(linkedChildren[0].id);
+    }
+  }, [currentParent, linkedChildren, selectedStudentId]);
 
   const selectedStudent = linkedChildren.find((c) => c.id === selectedStudentId) || linkedChildren[0];
 

@@ -14,6 +14,7 @@ import {
 import { Header } from './components/Header';
 import { UserProfileModal } from './components/UserProfileModal';
 import { AIAssistantModal } from './components/AIAssistantModal';
+import { LoginScreen } from './components/LoginScreen';
 import { ParentDashboard } from './components/ParentDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { FacultyDashboard } from './components/FacultyDashboard';
@@ -25,15 +26,22 @@ import {
   HeartHandshake,
   ShieldAlert,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Shield
 } from 'lucide-react';
 
 export function App() {
   const [users, setUsers] = useState<User[]>(mockUsers);
-  // Default to the Parent user to immediately showcase parental oversight features
-  const [currentUser, setCurrentUser] = useState<User>(
-    mockUsers.find((u) => u.role === 'PARENT') || mockUsers[0]
-  );
+  // Persist session or require login
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('edutrack_session_user');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      // ignore
+    }
+    return null; // Prompt login screen
+  });
   const [courses, setCourses] = useState<Course[]>(mockCourses);
   const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments);
   const [submissions, setSubmissions] = useState<Submission[]>(mockSubmissions);
@@ -45,6 +53,20 @@ export function App() {
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isAIOpen, setIsAIOpen] = useState(false);
+
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    try {
+      localStorage.setItem('edutrack_session_user', JSON.stringify(user));
+    } catch (e) {}
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('edutrack_session_user');
+    } catch (e) {}
+  };
 
   // Sync initial state from backend on mount if server is running
   useEffect(() => {
@@ -222,79 +244,59 @@ export function App() {
     }).catch((err) => console.log('Backend sync skipped:', err));
   };
 
+  // If not logged in, present secure multi-role login barrier
+  if (!currentUser) {
+    return <LoginScreen users={users} onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
       {/* Top Navigation */}
       <Header
         currentUser={currentUser}
         onOpenProfile={() => setIsProfileOpen(true)}
-        onSwitchRole={handleSwitchRole}
+        onLogout={handleLogout}
         notifications={notifications}
         onOpenAI={() => setIsAIOpen(true)}
         onMarkNotificationsRead={handleMarkNotificationsRead}
       />
 
-      {/* Main Body */}
+      {/* Main Body with Enforced Role-Based Access Isolation */}
       <div className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 space-y-6">
-        {/* Portal Tabs Bar */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            <button
-              onClick={() => handleSwitchRole('PARENT')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                currentUser.role === 'PARENT'
-                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/25 ring-1 ring-purple-400/40'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <HeartHandshake className="w-4 h-4" />
-              <span>Parent Portal</span>
-            </button>
-
-            <button
-              onClick={() => handleSwitchRole('STUDENT')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                currentUser.role === 'STUDENT'
-                  ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/25 ring-1 ring-emerald-400/40'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <GraduationCap className="w-4 h-4" />
-              <span>Student Workspace</span>
-            </button>
-
-            <button
-              onClick={() => handleSwitchRole('FACULTY')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                currentUser.role === 'FACULTY'
-                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/25 ring-1 ring-amber-400/40'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>Faculty Dashboard</span>
-            </button>
-
-            <button
-              onClick={() => handleSwitchRole('ADMIN')}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                currentUser.role === 'ADMIN'
-                  ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/25 ring-1 ring-rose-400/40'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <ShieldAlert className="w-4 h-4" />
-              <span>Admin Console</span>
-            </button>
+        {/* Portal Access Status Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800/80 gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              {currentUser.role === 'PARENT' && <HeartHandshake className="w-4 h-4 text-purple-400" />}
+              {currentUser.role === 'STUDENT' && <GraduationCap className="w-4 h-4 text-emerald-400" />}
+              {currentUser.role === 'FACULTY' && <BookOpen className="w-4 h-4 text-amber-400" />}
+              {currentUser.role === 'ADMIN' && <ShieldAlert className="w-4 h-4 text-rose-400" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-white tracking-wide">
+                  {currentUser.role === 'PARENT' && 'Parental Oversight & Child Monitoring System'}
+                  {currentUser.role === 'STUDENT' && 'Student Learning & Coursework Portal'}
+                  {currentUser.role === 'FACULTY' && 'Faculty Instruction & Grading Portal'}
+                  {currentUser.role === 'ADMIN' && 'Institutional Administration Console'}
+                </span>
+                <span className="text-[10px] font-semibold px-2 py-0.2 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                  Restricted Access
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Logged in as <strong className="text-slate-200">{currentUser.name}</strong> ({currentUser.email})
+              </p>
+            </div>
           </div>
 
-          <div className="hidden md:flex items-center gap-2 text-xs text-slate-400">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>EduTrack System Online</span>
+            <span className="text-[11px]">EduTrack RBAC Active</span>
           </div>
         </div>
 
-        {/* Dynamic Role Dashboard */}
+        {/* Dynamic Authorized Portal View Only */}
         {currentUser.role === 'PARENT' && (
           <ParentDashboard
             currentParent={currentUser}
@@ -349,6 +351,7 @@ export function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
       {/* Gemini AI Assistant Modal */}
