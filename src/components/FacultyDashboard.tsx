@@ -9,7 +9,8 @@ import {
   QuizAttempt,
   AttendanceRecord,
   ParentReview,
-  RegistrationRequest
+  RegistrationRequest,
+  FeeRecord
 } from '../types';
 import { APP_CONFIG } from '../config/constants';
 import { YouTubeVideoPlayer } from './faculty/YouTubeVideoPlayer';
@@ -19,6 +20,7 @@ import { QuizFormModal } from './faculty/QuizFormModal';
 import { QuizAnalyticsModal } from './faculty/QuizAnalyticsModal';
 import { AssignmentFormModal } from './faculty/AssignmentFormModal';
 import { AttendanceSessionManager } from './faculty/AttendanceSessionManager';
+import { BillingAlertManager } from './billing/BillingAlertManager';
 import {
   BookOpen,
   Users,
@@ -43,7 +45,8 @@ import {
   X,
   School,
   HeartHandshake,
-  UserCheck2
+  UserCheck2,
+  Receipt
 } from 'lucide-react';
 
 interface FacultyDashboardProps {
@@ -58,6 +61,7 @@ interface FacultyDashboardProps {
   parentReviews: ParentReview[];
   students: User[];
   registrationRequests?: RegistrationRequest[];
+  fees?: FeeRecord[];
   onConfirmRegistration?: (requestId: string) => void;
   onRejectRegistration?: (requestId: string, reason: string) => void;
   onGradeSubmission: (submissionId: string, marks: number, feedback: string) => void;
@@ -69,6 +73,7 @@ interface FacultyDashboardProps {
   onSaveAssignment: (asg: Partial<Assignment>) => void;
   onDeleteAssignment: (assignmentId: string) => void;
   onSaveAttendance: (courseId: string, date: string, records: { studentId: string; studentName: string; status: any }[]) => void;
+  onSendFeeReminder?: (feeId: string, customMessage?: string) => void;
 }
 
 export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
@@ -93,7 +98,9 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
   onDeleteQuiz,
   onSaveAssignment,
   onDeleteAssignment,
-  onSaveAttendance
+  onSaveAttendance,
+  fees = [],
+  onSendFeeReminder
 }) => {
   // Assigned courses for current faculty member only
   const myCourses = courses.filter(
@@ -278,6 +285,7 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           { id: 'ASSIGNMENTS', label: 'Assignments & Submissions', icon: FileCheck2, badge: pendingSubmissions.length },
           { id: 'ATTENDANCE', label: 'Attendance Sessions', icon: CalendarCheck },
           { id: 'PARENTS', label: 'Parent Inquiries', icon: MessageSquare, badge: parentReviews.length },
+          { id: 'BILLING', label: 'Fee Dues & Alerts', icon: Receipt, badge: fees.filter((f) => f.status === 'OVERDUE' || f.status === 'PENDING').length },
           ...(isClassTeacher
             ? [{ id: 'REGISTRATIONS', label: 'Registration Requests', icon: UserCheck2, badge: pendingTeacherRequests.length }]
             : [])
@@ -1344,6 +1352,21 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {/* Institutional Fee Dues & Billing Alerts Manager Tab */}
+      {activeTab === 'BILLING' && (
+        <BillingAlertManager
+          fees={fees}
+          students={students.filter((u) => u.role === 'STUDENT')}
+          senderName={currentFaculty.name}
+          senderRole="FACULTY"
+          onSendReminder={(feeId, msg) => {
+            if (onSendFeeReminder) {
+              onSendFeeReminder(feeId, msg);
+            }
+          }}
+        />
       )}
 
       {/* Teacher View Details Modal */}

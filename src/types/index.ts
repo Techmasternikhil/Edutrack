@@ -211,12 +211,39 @@ export interface NotificationItem {
   userId?: string;
   title: string;
   message: string;
-  type: 'ASSIGNMENT' | 'QUIZ' | 'GRADE' | 'ATTENDANCE' | 'SYSTEM' | 'PARENT_REVIEW';
+  type: 'ASSIGNMENT' | 'QUIZ' | 'GRADE' | 'ATTENDANCE' | 'SYSTEM' | 'PARENT_REVIEW' | 'BILLING';
   createdAt: string;
   isRead: boolean;
 }
 
 export type Notification = NotificationItem;
+
+export type FeeCategory = 'TUITION' | 'LAB_EXAM' | 'LIBRARY' | 'HOSTEL' | 'TRANSPORT' | 'SPORTS_ACTIVITY';
+export type FeeStatus = 'PAID' | 'PENDING' | 'OVERDUE';
+export type PaymentMethod = 'UPI' | 'NET_BANKING' | 'DEBIT_CREDIT_CARD' | 'DEMAND_DRAFT' | 'CASH';
+
+export interface FeeRecord {
+  id: string;
+  invoiceNumber?: string;
+  studentId: string;
+  studentName: string;
+  studentRegNumber?: string;
+  semester: number;
+  academicYear: string;
+  category: FeeCategory;
+  title: string;
+  description: string;
+  amount: number;
+  dueDate: string;
+  status: FeeStatus;
+  createdAt?: string;
+  paidAt?: string;
+  paidAmount?: number;
+  paymentMethod?: PaymentMethod;
+  transactionRef?: string;
+  receiptNumber?: string;
+  remarks?: string;
+}
 
 export interface AuditLog {
   id: string;

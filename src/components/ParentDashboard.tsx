@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { User, Course, Submission, QuizAttempt, AttendanceRecord, ParentReview } from '../types';
+import { User, Course, Submission, QuizAttempt, AttendanceRecord, ParentReview, FeeRecord, PaymentMethod } from '../types';
+import { StudentBillingSection } from './student/StudentBillingSection';
 import {
   Users,
   Award,
@@ -13,7 +14,8 @@ import {
   CheckCircle2,
   Clock,
   BookOpen,
-  HeartHandshake
+  HeartHandshake,
+  Receipt
 } from 'lucide-react';
 import { APP_CONFIG } from '../config/constants';
 import {
@@ -36,7 +38,9 @@ interface ParentDashboardProps {
   quizAttempts: QuizAttempt[];
   attendance: AttendanceRecord[];
   reviews: ParentReview[];
+  fees?: FeeRecord[];
   onSubmitReview: (review: Omit<ParentReview, 'id' | 'createdAt' | 'status'>) => void;
+  onPayFee?: (feeId: string, paymentMethod: PaymentMethod, transactionRef: string) => void;
 }
 
 export const ParentDashboard: React.FC<ParentDashboardProps> = ({
@@ -47,7 +51,9 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
   quizAttempts,
   attendance,
   reviews,
-  onSubmitReview
+  fees = [],
+  onSubmitReview,
+  onPayFee
 }) => {
   // Linked children strictly limited to this parent's authorized IDs
   const linkedChildren = allUsers.filter(
@@ -579,6 +585,21 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Ward Institutional Billing & Fees Section */}
+      <div className="pt-2">
+        <StudentBillingSection
+          studentId={selectedStudent.id}
+          studentName={selectedStudent.name}
+          fees={fees}
+          onPayFee={(feeId, method, ref) => {
+            if (onPayFee) {
+              onPayFee(feeId, method, ref);
+            }
+          }}
+          isParentView={true}
+        />
       </div>
     </div>
   );

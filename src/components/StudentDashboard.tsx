@@ -7,10 +7,13 @@ import {
   Submission,
   Quiz,
   QuizAttempt,
-  AttendanceRecord
+  AttendanceRecord,
+  FeeRecord,
+  PaymentMethod
 } from '../types';
 import { APP_CONFIG } from '../config/constants';
 import { YouTubeVideoPlayer } from './faculty/YouTubeVideoPlayer';
+import { StudentBillingSection } from './student/StudentBillingSection';
 import {
   GraduationCap,
   Award,
@@ -24,7 +27,9 @@ import {
   FileText,
   AlertTriangle,
   Clock,
-  Upload
+  Upload,
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -36,8 +41,10 @@ interface StudentDashboardProps {
   quizzes: Quiz[];
   quizAttempts: QuizAttempt[];
   attendance: AttendanceRecord[];
+  fees?: FeeRecord[];
   onSubmitAssignment: (assignmentId: string, assignmentTitle: string, courseCode: string, fileName: string) => void;
   onSubmitQuiz?: (quizId: string, answers: Record<string, number>, timeTaken: number) => void;
+  onPayFee?: (feeId: string, paymentMethod: PaymentMethod, transactionRef: string) => void;
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -49,8 +56,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   quizzes,
   quizAttempts,
   attendance,
+  fees = [],
   onSubmitAssignment,
-  onSubmitQuiz
+  onSubmitQuiz,
+  onPayFee
 }) => {
   const [selectedAsgId, setSelectedAsgId] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
@@ -96,6 +105,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const attendanceRate = myAttendance.length > 0 ? Math.round((presentCount / myAttendance.length) * 100) : 100;
 
   const isAttendanceBelowThreshold = attendanceRate < APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD;
+
+  const myFees = fees.filter((f) => f.studentId === currentStudent.id);
+  const myPendingFeesCount = myFees.filter((f) => f.status === 'PENDING' || f.status === 'OVERDUE').length;
 
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -228,7 +240,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           { id: 'VIDEOS', label: 'Teaching Videos', icon: Video, badge: studentVideos.length },
           { id: 'MATERIALS', label: 'Study Materials & Slides', icon: FileText, badge: studentDocs.length },
           { id: 'ASSIGNMENTS', label: 'Assignments', icon: FileCheck2 },
-          { id: 'QUIZZES', label: 'Online Quizzes', icon: Award, badge: studentQuizzes.length }
+          { id: 'QUIZZES', label: 'Online Quizzes', icon: Award, badge: studentQuizzes.length },
+          { id: 'BILLING', label: 'Fees & Invoices', icon: Receipt, badge: myPendingFeesCount }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -257,6 +270,21 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           );
         })}
       </div>
+
+      {/* Fees & Billing Section */}
+      {activeTab === 'BILLING' && (
+        <StudentBillingSection
+          studentId={currentStudent.id}
+          studentName={currentStudent.name}
+          fees={fees}
+          onPayFee={(feeId, method, ref) => {
+            if (onPayFee) {
+              onPayFee(feeId, method, ref);
+            }
+          }}
+          isParentView={false}
+        />
+      )}
 
       {/* Embedded YouTube Player Modal / In-Page Section */}
       {activeVideo && (

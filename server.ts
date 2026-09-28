@@ -15,7 +15,8 @@ import {
   mockAuditLogs,
   mockParentReviews,
   mockAcademicClasses,
-  mockRegistrationRequests
+  mockRegistrationRequests,
+  mockFeeRecords
 } from './src/data/mockData';
 
 const app = express();
@@ -37,6 +38,7 @@ let auditLogsStore = [...mockAuditLogs];
 let parentReviewsStore = [...mockParentReviews];
 let classesStore = [...mockAcademicClasses];
 let registrationRequestsStore = [...mockRegistrationRequests];
+let feeStore = [...mockFeeRecords];
 
 // Helper to append audit log
 function addAuditLog(performedBy: string, role: any, action: string, details: string) {
@@ -1371,6 +1373,199 @@ public class CourseController {
       }
     ]
   });
+});
+
+// ==========================================
+// INSTITUTIONAL BILLING & FEES REST APIS
+// ==========================================
+
+// Get Fees (with optional studentId or status filters)
+app.get('/api/fees', (req: Request, res: Response) => {
+  const { studentId, status } = req.query;
+  let results = [...feeStore];
+  if (studentId) {
+    results = results.filter((f) => f.studentId === studentId);
+  }
+  if (status) {
+    results = results.filter((f) => f.status === status);
+  }
+  res.json(results);
+});
+
+// Student or Parent Pays a Fee Record
+app.post('/api/fees/:id/pay', (req: Request, res: Response) => {
+  const { paymentMethod, transactionRef, paidBy, payerRole } = req.body;
+  const index = feeStore.findIndex((f) => f.id === req.params.id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Fee invoice record not found' });
+  }
+
+  const fee = feeStore[index];
+  if (fee.status === 'PAID') {
+    return res.status(400).json({ error: 'This invoice has already been cleared.' });
+  }
+
+  const now = new Date().toISOString();
+  const generatedReceipt = `REC-${Date.now().toString().slice(-6)}-${fee.category.slice(0, 3)}`;
+
+  fee.status = 'PAID';
+  fee.paidAt = now;
+  fee.paidAmount = fee.amount;
+  fee.paymentMethod = paymentMethod || 'UPI';
+  fee.transactionRef = transactionRef || `TXN-${Date.now().toString().slice(-8)}`;
+  fee.receiptNumber = generatedReceipt;
+  fee.remarks = `Cleared by ${paidBy || 'Payer'} (${payerRole || 'STUDENT'}) via ${paymentMethod || 'UPI'}`;
+
+  // Log in institutional audit trail
+  addAuditLog(
+    paidBy || 'Student/Parent',
+    payerRole || 'STUDENT',
+    'FEE_PAYMENT',
+    `Payment of ₹${fee.amount.toLocaleString('en-IN')} received for ${fee.title} (Student: ${fee.studentName}, Receipt: ${generatedReceipt})`
+  );
+
+  // Send Notification to Student
+  notificationsStore.unshift({
+    id: `notif-${Date.now()}-stu`,
+    userId: fee.studentId,
+    title: 'Fee Payment Received',
+    message: `Receipt ${generatedReceipt}: ₹${fee.amount.toLocaleString('en-IN')} cleared for ${fee.title}.`,
+    type: 'BILLING',
+    createdAt: now,
+    isRead: false
+  });
+
+  // Find linked parents for this student and notify them
+  const linkedParents = usersStore.filter(
+    (u) => u.role === 'PARENT' && u.childStudentIds?.includes(fee.studentId)
+  );
+  linkedParents.forEach((parent) => {
+    notificationsStore.unshift({
+      id: `notif-${Date.now()}-parent-${parent.id}`,
+      userId: parent.id,
+      title: 'Ward Fee Cleared',
+      message: `Payment confirmation: ₹${fee.amount.toLocaleString('en-IN')} cleared for ${fee.studentName}'s ${fee.title} (Receipt: ${generatedReceipt}).`,
+      type: 'BILLING',
+      createdAt: now,
+      isRead: false
+    });
+  });
+
+  res.json({ success: true, fee, message: 'Fee payment successfully processed and receipt generated.' });
+});
+
+// Admin or Faculty Issues a Fee Dues Reminder Alert
+app.post('/api/fees/:id/remind', (req: Request, res: Response) => {
+  const { senderName, senderRole, customMessage } = req.body;
+  const index = feeStore.findIndex((f) => f.id === req.params.id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Fee record not found' });
+  }
+
+  const fee = feeStore[index];
+  const now = new Date().toISOString();
+  const alertTitle = fee.status === 'OVERDUE' ? '⚠️ OVERDUE Fee Reminder Alert' : '📢 Academic Fee Payment Reminder';
+  const alertMsg = customMessage || 
+    `${senderName} (${senderRole}): Reminder for ${fee.title} of ₹${fee.amount.toLocaleString('en-IN')} due on ${fee.dueDate}. Please clear pending dues immediately.`;
+
+  // Notify the student
+  notificationsStore.unshift({
+    id: `notif-${Date.now()}-remind-stu`,
+    userId: fee.studentId,
+    title: alertTitle,
+    message: alertMsg,
+    type: 'BILLING',
+    createdAt: now,
+    isRead: false
+  });
+
+  // Notify linked parent(s)
+  const linkedParents = usersStore.filter(
+    (u) => u.role === 'PARENT' && u.childStudentIds?.includes(fee.studentId)
+  );
+  linkedParents.forEach((parent) => {
+    notificationsStore.unshift({
+      id: `notif-${Date.now()}-remind-par-${parent.id}`,
+      userId: parent.id,
+      title: alertTitle,
+      message: `Parent Notice: ${fee.studentName} has a pending invoice for ${fee.title} (₹${fee.amount.toLocaleString('en-IN')}). Due date: ${fee.dueDate}.`,
+      type: 'BILLING',
+      createdAt: now,
+      isRead: false
+    });
+  });
+
+  // Add audit record
+  addAuditLog(
+    senderName || 'Instructor/Admin',
+    senderRole || 'FACULTY',
+    'FEE_REMINDER_SENT',
+    `Sent billing alert for ${fee.title} to student ${fee.studentName} and associated guardian(s).`
+  );
+
+  res.json({ success: true, message: `Fee alert successfully dispatched to ${fee.studentName} and guardians.` });
+});
+
+// Admin Creates New Fee Invoice
+app.post('/api/fees', (req: Request, res: Response) => {
+  const { studentId, category, title, description, amount, dueDate, semester, academicYear, creatorName, creatorRole } = req.body;
+  if (!studentId || !title || !amount || !dueDate) {
+    return res.status(400).json({ error: 'studentId, title, amount, and dueDate are required.' });
+  }
+
+  const student = usersStore.find((u) => u.id === studentId);
+  const newFee = {
+    id: `fee-${Date.now()}`,
+    studentId,
+    studentName: student?.name || 'Enrolled Student',
+    studentRegNumber: student?.regNumber,
+    semester: Number(semester) || student?.semester || 4,
+    academicYear: academicYear || '2026-2027',
+    category: category || 'TUITION',
+    title,
+    description: description || 'Mandatory university fees invoice.',
+    amount: Number(amount),
+    dueDate,
+    status: 'PENDING'
+  };
+
+  feeStore.unshift(newFee as any);
+
+  // Notify student & parents
+  const now = new Date().toISOString();
+  notificationsStore.unshift({
+    id: `notif-${Date.now()}-newfee`,
+    userId: studentId,
+    title: 'New Fee Invoice Generated',
+    message: `A new invoice of ₹${Number(amount).toLocaleString('en-IN')} for ${title} has been assigned to your account. Due: ${dueDate}.`,
+    type: 'BILLING',
+    createdAt: now,
+    isRead: false
+  });
+
+  const linkedParents = usersStore.filter((u) => u.role === 'PARENT' && u.childStudentIds?.includes(studentId));
+  linkedParents.forEach((parent) => {
+    notificationsStore.unshift({
+      id: `notif-${Date.now()}-newfee-par-${parent.id}`,
+      userId: parent.id,
+      title: 'New Student Fee Invoice',
+      message: `An invoice of ₹${Number(amount).toLocaleString('en-IN')} for ${title} was generated for your ward ${student?.name || 'Student'}. Due: ${dueDate}.`,
+      type: 'BILLING',
+      createdAt: now,
+      isRead: false
+    });
+  });
+
+  addAuditLog(
+    creatorName || 'Admin',
+    creatorRole || 'ADMIN',
+    'FEE_INVOICE_CREATED',
+    `Created fee invoice ${title} of ₹${Number(amount).toLocaleString('en-IN')} for student ${student?.name || studentId}`
+  );
+
+  res.status(201).json({ success: true, fee: newFee });
 });
 
 

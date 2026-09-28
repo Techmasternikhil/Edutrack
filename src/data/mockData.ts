@@ -11,7 +11,8 @@ import {
   AuditLog,
   ParentReview,
   AcademicClass,
-  RegistrationRequest
+  RegistrationRequest,
+  FeeRecord
 } from '../types';
 
 export const mockAcademicClasses: AcademicClass[] = [
@@ -510,3 +511,92 @@ export const mockParentReviews: ParentReview[] = [
     createdAt: '2026-09-22T10:15:00Z'
   }
 ];
+
+export const mockFeeRecords: FeeRecord[] = [
+  {
+    id: 'fee-1',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    studentRegNumber: 'CS-2024-041',
+    semester: 4,
+    academicYear: '2026-2027',
+    category: 'TUITION',
+    title: 'Semester 4 Tuition & Academic Instruction Fee',
+    description: 'B.Tech CSE Core curriculum tuition, faculty guidance, and lecture halls access.',
+    amount: 65000,
+    dueDate: '2026-10-15',
+    status: 'PENDING',
+    remarks: 'Installment 1 of 2. Early-bird discount applied.'
+  },
+  {
+    id: 'fee-2',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    studentRegNumber: 'CS-2024-041',
+    semester: 4,
+    academicYear: '2026-2027',
+    category: 'LAB_EXAM',
+    title: 'Distributed Systems & Database Computing Lab Fee',
+    description: 'Hardware cluster access, cloud VM allocations, and Oracle database server licenses.',
+    amount: 12500,
+    dueDate: '2026-10-05',
+    status: 'PAID',
+    paidAt: '2026-09-18T11:20:00Z',
+    paidAmount: 12500,
+    paymentMethod: 'UPI',
+    transactionRef: 'UPI/2026/0918/9837192',
+    receiptNumber: 'REC-2026-CS-041-01',
+    remarks: 'Payment verified and receipt issued.'
+  },
+  {
+    id: 'fee-3',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    studentRegNumber: 'CS-2024-041',
+    semester: 4,
+    academicYear: '2026-2027',
+    category: 'LIBRARY',
+    title: 'Digital Library & IEEE Xplore Journals Subscription',
+    description: 'Annual digital library subscription, research portal, and book lending services.',
+    amount: 3500,
+    dueDate: '2026-09-20',
+    status: 'OVERDUE',
+    remarks: 'Statutory late fee of ₹250 applicable if unpaid past Oct 01.'
+  },
+  {
+    id: 'fee-4',
+    studentId: 'usr-stu-2',
+    studentName: 'Diya Patel',
+    studentRegNumber: 'CS-2024-042',
+    semester: 4,
+    academicYear: '2026-2027',
+    category: 'TUITION',
+    title: 'Semester 4 Tuition & Academic Instruction Fee',
+    description: 'B.Tech CSE Core curriculum tuition and instructional facilities.',
+    amount: 65000,
+    dueDate: '2026-10-15',
+    status: 'PAID',
+    paidAt: '2026-09-12T14:45:00Z',
+    paidAmount: 65000,
+    paymentMethod: 'NET_BANKING',
+    transactionRef: 'HDFC/NETB/882710384',
+    receiptNumber: 'REC-2026-CS-042-01',
+    remarks: 'Semester tuition cleared in full.'
+  },
+  {
+    id: 'fee-5',
+    studentId: 'usr-stu-2',
+    studentName: 'Diya Patel',
+    studentRegNumber: 'CS-2024-042',
+    semester: 4,
+    academicYear: '2026-2027',
+    category: 'LAB_EXAM',
+    title: 'Distributed Systems & Database Computing Lab Fee',
+    description: 'High performance lab computing cluster and test infrastructure.',
+    amount: 12500,
+    dueDate: '2026-10-05',
+    status: 'PENDING',
+    remarks: 'Awaiting student or parent clearance.'
+  }
+];
+

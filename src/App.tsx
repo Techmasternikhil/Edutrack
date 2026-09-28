@@ -12,7 +12,8 @@ import {
   Notification,
   ParentReview,
   AcademicClass,
-  RegistrationRequest
+  RegistrationRequest,
+  FeeRecord
 } from './types';
 import {
   mockUsers,
@@ -26,7 +27,8 @@ import {
   mockNotifications,
   mockParentReviews,
   mockAcademicClasses,
-  mockRegistrationRequests
+  mockRegistrationRequests,
+  mockFeeRecords
 } from './data/mockData';
 import { Header } from './components/Header';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -71,6 +73,7 @@ export function App() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [parentReviews, setParentReviews] = useState<ParentReview[]>(mockParentReviews);
+  const [fees, setFees] = useState<FeeRecord[]>(mockFeeRecords);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleLogin = (user: User) => {
@@ -549,8 +552,9 @@ export function App() {
           fetch('/api/notifications').then((r) => r.json()).catch(() => null),
           fetch('/api/parent/reviews').then((r) => r.json()).catch(() => null),
           fetch('/api/academic-classes').then((r) => r.json()).catch(() => null),
-          fetch('/api/admin/registration-requests').then((r) => r.json()).catch(() => null)
-        ]).then(([u, c, mats, asg, subs, qz, qa, att, notifs, revs, aClasses, regReqs]) => {
+          fetch('/api/admin/registration-requests').then((r) => r.json()).catch(() => null),
+          fetch('/api/fees').then((r) => r.json()).catch(() => null)
+        ]).then(([u, c, mats, asg, subs, qz, qa, att, notifs, revs, aClasses, regReqs, feeRecords]) => {
           if (u && Array.isArray(u) && u.length > 0) {
             // Normalize any legacy/demo names to authentic Indian names
             const indianNameMap: Record<string, { name: string; email: string }> = {
@@ -606,6 +610,7 @@ export function App() {
           if (revs && Array.isArray(revs) && revs.length > 0) setParentReviews(revs);
           if (aClasses && Array.isArray(aClasses) && aClasses.length > 0) setAcademicClasses(aClasses);
           if (regReqs && Array.isArray(regReqs) && regReqs.length > 0) setRegistrationRequests(regReqs);
+          if (feeRecords && Array.isArray(feeRecords) && feeRecords.length > 0) setFees(feeRecords);
         });
       })
       .catch((err) => console.log('Running in local mock store:', err));
@@ -615,6 +620,116 @@ export function App() {
   const handleMarkNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     fetch('/api/notifications/read-all', { method: 'PUT' }).catch(() => null);
+  };
+
+  // Fee Payment Handler (Student or Parent)
+  const handlePayFee = async (feeId: string, paymentMethod: string, transactionRef?: string) => {
+    const targetFee = fees.find((f) => f.id === feeId);
+    if (!targetFee) return;
+
+    const receiptNo = `REC-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const paidAt = new Date().toISOString();
+
+    // Optimistically update local fee state
+    setFees((prev) =>
+      prev.map((f) =>
+        f.id === feeId
+          ? {
+              ...f,
+              status: 'PAID',
+              paidAt,
+              paidAmount: f.amount,
+              paymentMethod: paymentMethod as any,
+              transactionRef: transactionRef || `TXN${Date.now()}`,
+              receiptNumber: receiptNo
+            }
+          : f
+      )
+    );
+
+    // Call backend API
+    fetch(`/api/fees/${feeId}/pay`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paymentMethod,
+        transactionRef,
+        payerId: currentUser?.id,
+        payerName: currentUser?.name,
+        payerRole: currentUser?.role
+      })
+    }).catch((err) => console.log('Fee payment API error:', err));
+
+    // Create immediate user notification
+    const receiptNotif: Notification = {
+      id: `notif-fee-${Date.now()}`,
+      title: 'Fee Payment Received',
+      message: `Payment of ₹${targetFee.amount.toLocaleString('en-IN')} for "${targetFee.title}" has been verified. Receipt: ${receiptNo}.`,
+      type: 'BILLING',
+      createdAt: paidAt,
+      isRead: false
+    };
+    setNotifications((prev) => [receiptNotif, ...prev]);
+  };
+
+  // Fee Reminder Dispatcher (Faculty or Admin)
+  const handleSendFeeReminder = async (feeId: string, customMessage?: string) => {
+    const targetFee = fees.find((f) => f.id === feeId);
+    if (!targetFee) return;
+
+    fetch(`/api/fees/${feeId}/remind`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        senderId: currentUser?.id,
+        senderName: currentUser?.name,
+        senderRole: currentUser?.role,
+        customMessage
+      })
+    }).catch((err) => console.log('Fee reminder API error:', err));
+
+    // Push local in-app alert
+    const reminderNotif: Notification = {
+      id: `notif-remind-${Date.now()}`,
+      title: 'Fee Due Alert Dispatched',
+      message: `Reminder sent to ${targetFee.studentName} for ₹${targetFee.amount.toLocaleString('en-IN')} (${targetFee.title}) by ${currentUser?.name}.`,
+      type: 'BILLING',
+      createdAt: new Date().toISOString(),
+      isRead: false
+    };
+    setNotifications((prev) => [reminderNotif, ...prev]);
+  };
+
+  // Fee Invoice Creator (Admin)
+  const handleCreateFeeInvoice = async (invoiceData: Omit<FeeRecord, 'id' | 'createdAt' | 'status'> & { status?: FeeRecord['status'] }) => {
+    const newInvoice: FeeRecord = {
+      id: `fee-${Date.now()}`,
+      status: invoiceData.status || 'PENDING',
+      createdAt: new Date().toISOString(),
+      ...invoiceData
+    };
+
+    setFees((prev) => [newInvoice, ...prev]);
+
+    fetch('/api/fees', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...invoiceData,
+        creatorId: currentUser?.id,
+        creatorName: currentUser?.name
+      })
+    }).catch((err) => console.log('Fee invoice create API error:', err));
+
+    const invoiceNotif: Notification = {
+      id: `notif-inv-${Date.now()}`,
+      title: 'New Institutional Fee Invoice Raised',
+      message: `Invoice #${newInvoice.invoiceNumber} of ₹${newInvoice.amount.toLocaleString('en-IN')} issued for ${newInvoice.studentName}.`,
+      type: 'BILLING',
+      createdAt: new Date().toISOString(),
+      isRead: false
+    };
+    setNotifications((prev) => [invoiceNotif, ...prev]);
   };
 
   // Parent submits review
@@ -995,6 +1110,8 @@ export function App() {
             quizAttempts={quizAttempts}
             attendance={attendance}
             reviews={parentReviews}
+            fees={fees}
+            onPayFee={handlePayFee}
             onSubmitReview={handleParentSubmitReview}
           />
         )}
@@ -1009,6 +1126,8 @@ export function App() {
             quizzes={quizzes}
             quizAttempts={quizAttempts}
             attendance={attendance}
+            fees={fees}
+            onPayFee={handlePayFee}
             onSubmitAssignment={handleStudentSubmitAssignment}
             onSubmitQuiz={handleStudentSubmitQuiz}
           />
@@ -1027,6 +1146,8 @@ export function App() {
             parentReviews={parentReviews}
             students={users}
             registrationRequests={registrationRequests}
+            fees={fees}
+            onSendFeeReminder={handleSendFeeReminder}
             onConfirmRegistration={handleTeacherConfirmRegistration}
             onRejectRegistration={handleTeacherRejectRegistration}
             onGradeSubmission={handleGradeSubmission}
@@ -1049,6 +1170,9 @@ export function App() {
             parentReviews={parentReviews}
             academicClasses={academicClasses}
             registrationRequests={registrationRequests}
+            fees={fees}
+            onSendFeeReminder={handleSendFeeReminder}
+            onCreateInvoice={handleCreateFeeInvoice}
             onApproveRegistration={handleAdminApproveRegistration}
             onRejectRegistration={handleAdminRejectRegistration}
             onCreateAdmin={handleAdminCreateAdmin}

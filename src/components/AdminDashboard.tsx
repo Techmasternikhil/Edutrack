@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Course, ParentReview, Submission, RegistrationRequest, AcademicClass } from '../types';
+import { User, Course, ParentReview, Submission, RegistrationRequest, AcademicClass, FeeRecord } from '../types';
 import {
   Users,
   BookOpen,
@@ -15,9 +15,11 @@ import {
   Eye,
   School,
   FileText,
-  Edit3
+  Edit3,
+  Receipt
 } from 'lucide-react';
 import { EditUserModal } from './admin/EditUserModal';
+import { BillingAlertManager } from './billing/BillingAlertManager';
 
 interface AdminDashboardProps {
   users: User[];
@@ -39,6 +41,17 @@ interface AdminDashboardProps {
   }) => void;
   onApproveUser?: (userId: string, status: 'APPROVED' | 'REJECTED') => void;
   onUpdateUser?: (updatedUser: User) => void;
+  fees?: FeeRecord[];
+  onSendFeeReminder?: (feeId: string, customMessage?: string) => void;
+  onCreateInvoice?: (invoiceData: {
+    studentId: string;
+    title: string;
+    amount: number;
+    dueDate: string;
+    category: FeeRecord['category'];
+    description: string;
+    semester: number;
+  }) => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -53,9 +66,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onCreateAdmin,
   onCreateClass,
   onApproveUser,
-  onUpdateUser
+  onUpdateUser,
+  fees = [],
+  onSendFeeReminder,
+  onCreateInvoice
 }) => {
   const [filterRole, setFilterRole] = useState<string>('ALL');
+  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'REGISTRATIONS' | 'USERS' | 'BILLING'>('OVERVIEW');
 
   // Edit User Modal state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -192,6 +209,42 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
+      {/* Navigation Admin Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-800 text-xs">
+        {[
+          { id: 'OVERVIEW', label: 'Administration Overview', icon: ShieldAlert },
+          { id: 'REGISTRATIONS', label: 'Registration Clearances', icon: School, badge: pendingAdminRequests.length },
+          { id: 'USERS', label: 'User Accounts Directory', icon: Users, badge: users.length },
+          { id: 'BILLING', label: 'Institutional Billing & Fee Alerts', icon: Receipt, badge: fees.filter((f) => f.status === 'OVERDUE' || f.status === 'PENDING').length }
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = adminTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setAdminTab(tab.id as any)}
+              className={`px-3.5 py-2 rounded-xl font-medium flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{tab.label}</span>
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-300'
+                  }`}
+                >
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Metric Cards (8 Total institucional cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl glass-card flex items-center justify-between">
@@ -275,7 +328,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
+      {/* Billing & Dues Oversight Tab */}
+      {adminTab === 'BILLING' && (
+        <BillingAlertManager
+          students={users.filter((u) => u.role === 'STUDENT')}
+          fees={fees}
+          onSendReminder={onSendFeeReminder}
+          onCreateInvoice={onCreateInvoice}
+          canCreateInvoice={true}
+          currentRole="ADMIN"
+        />
+      )}
+
       {/* Two-Stage Registration Approval Queue for Admin */}
+      {(adminTab === 'OVERVIEW' || adminTab === 'REGISTRATIONS') && (
       <div className="p-5 rounded-2xl glass-panel border border-emerald-500/30 bg-emerald-950/10 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-emerald-400">
@@ -388,8 +454,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         )}
       </div>
+      )}
 
       {/* User Roster & Directory */}
+      {(adminTab === 'OVERVIEW' || adminTab === 'USERS') && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 p-5 rounded-2xl glass-panel space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
@@ -507,6 +575,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       </div>
+      )}
 
       {/* Add Administrator Modal */}
       {isAddAdminOpen && (
