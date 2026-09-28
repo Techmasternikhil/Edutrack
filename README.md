@@ -17,11 +17,21 @@
 - **🔄 Two-Stage Onboarding & Verification**:
   - **Stage 1 (Class Teacher Verification)**: When students or parents register, the application routes automatically to their designated Department Class Teacher for academic validation.
   - **Stage 2 (Administrator Clearance & Account Activation)**: Once confirmed by the Class Teacher, university administrators conduct institutional security clearance to activate login credentials.
-- **👨‍🏫 Faculty Instruction Portal**: YouTube video lecture integration, syllabus course material distribution, interactive quiz authoring with auto-grading, assignment evaluation, and attendance tracking.
-- **🎓 Student Learning Workspace**: Real-time course progress tracking, interactive quiz attempts with timer and instant grade calculation, assignment upload management, and attendance compliance gauges.
-- **👨‍👩‍👧 Parent Academic Oversight Portal**: Multi-child switcher, continuous GPA and grade breakdown analytics (via Recharts), absence alerts, and direct teacher inquiry messaging.
-- **⚙️ Institutional Admin Console**: Manage university batches & academic classes, provision administrators, audit logins, and update details for registered faculty, students, and parents.
-- **🏛️ Production Ready Backend & Database**: Express.js REST API layer with in-memory persistence and enterprise Oracle Database SQL schema (`backend/oracle-schema.sql`).
+- **📊 Statutory Attendance Monitoring Engine**:
+  - Subject-wise and cumulative attendance analytics calculated via `academic.ts`.
+  - Statutory 75% threshold enforcement with dynamic shortage calculation (classes required to reach 75%).
+  - Real-time attendance logging by faculty and non-intrusive live monitoring for students and parents.
+- **💳 Financial Clearance & Fee Billing Portal**:
+  - Semester tuition, lab, and examination invoice generation with overdue penalties.
+  - Seamless simulated UPI, NetBanking, and Card checkout with downloadable payment receipts.
+  - Integrated billing alerts with auto-populated arrears for administrators and faculty advisors.
+- **👨‍🏫 Official AY 2026–2027 Academic Structure**:
+  - Pre-configured for Department of CSE, Semester IV (ODD), Section VII / VII-A.
+  - 10 prescribed subjects (`CNS`, `SE`, `PSP(T+P)`, `DL`, `OS(T+P)`, `IR`, `MINI PRO`, `SEM`, `MENTOR`, `CC/ECC`) mapped to designated faculty instructors and laboratories.
+  - Weekly 30-period master timetable matrix preserving institutional break slots.
+- **🎓 Complete Indian Student & Parent Cohort**:
+  - 10 fully seeded Indian students with registration numbers, academic GPAs, and class assignments.
+  - 10 corresponding parents with strictly isolated 1-to-1 data bindings (`childStudentIds`).
 
 ---
 
@@ -32,6 +42,7 @@
 | **Frontend Framework** | **React 19**, **TypeScript** | High-performance reactive UI with modular component hierarchy |
 | **Styling & Design System** | **TailwindCSS v4**, **Lucide React** | Modern dark-mode interface with glassmorphism, responsive grids, and micro-animations |
 | **Data Visualizations** | **Recharts** | Interactive academic performance charts, grade distributions, and attendance radar gauges |
+| **Academic Calculation Engine** | **TypeScript (`src/utils/academic.ts`)** | Real-time statutory attendance compliance, shortage forecasting, and GPA aggregations |
 | **Server Runtime** | **Node.js**, **Express.js**, **tsx** | REST API providing authentication, registration queue routing, and gradebook processing |
 | **Bundling & Build** | **Vite 6**, **esbuild** | Sub-second HMR dev server and optimized production build compilation |
 | **Database Schema** | **Oracle SQL 19c/21c DDL** | 3NF normalized schema with B-Tree indexes, foreign keys, and audit logging tables |
@@ -42,15 +53,19 @@
 
 You can test every role directly using the **1-Click Test** profile buttons on the login screen or by entering the credentials below:
 
-| Role | Name | Email Address | Password | Key Capabilities |
+| Role | Name | Email Address | Password | Context / Role Details |
 | :--- | :--- | :--- | :--- | :--- |
-| **Administrator** | Dr. Rajesh Verma | `admin@edutrack.edu` | `admin123` | System oversight, create classes, approve registrations, edit user records |
-| **Faculty / Staff** | Prof. Ananya Sharma | `ananya.sharma@edutrack.edu` | `faculty123` | Class Teacher review queue, publish videos/materials, grade assignments, quizzes |
-| **Faculty / Staff** | Dr. Vikram Sarabhai | `vikram.sarabhai@edutrack.edu` | `faculty123` | Department instructor, course content management |
-| **Student** | Aarav Sharma | `aarav.sharma@student.edutrack.edu` | `student123` | Submit assignments, attempt quizzes, view attendance and GPA analytics |
-| **Student** | Diya Patel | `diya.patel@student.edutrack.edu` | `student123` | Enrolled learner, video lectures, grades |
-| **Parent** | Raveendra Sharma | `raveendra.sharma@edutrack.edu` | `parent123` | Monitor student Aarav Sharma, view attendance status, message faculty |
-| **Parent** | Suresh Patel | `suresh.patel@gmail.com` | `parent123` | Monitor student Diya Patel, academic performance oversight |
+| **Administrator** | Dr. Rajesh Verma | `admin@edutrack.edu` | `admin123` | Institutional oversight, user provisioning, billing audits |
+| **Faculty Advisor** | Dr. R. Elankavi | `elankavi.cse@edutrack.edu` | `password123` | Faculty Advisor (Section VII-A), PSP(T+P), Seminar |
+| **Faculty / Instructor** | Dr. N. Sarika | `sarika.cse@edutrack.edu` | `password123` | Course Faculty for SE & Mini Project |
+| **Student** | Aarav Sharma | `aarav.sharma@student.edutrack.edu` | `password123` | Reg: `CS-2024-041`, GPA: 3.82, Fee: PAID |
+| **Student** | Diya Patel | `diya.patel@student.edutrack.edu` | `password123` | Reg: `CS-2024-042`, GPA: 3.91, Fee: PENDING |
+| **Student** | Rohan Iyer | `rohan.iyer@student.edutrack.edu` | `password123` | Reg: `CS-2024-043`, GPA: 3.78, Fee: OVERDUE |
+| **Parent** | Raveendra Sharma | `raveendra.sharma@gmail.com` | `password123` | Guardian of Aarav Sharma (Isolated access) |
+| **Parent** | Suresh Patel | `suresh.patel@gmail.com` | `password123` | Guardian of Diya Patel (Isolated access) |
+| **Parent** | Subramanian Iyer | `subramanian.iyer@gmail.com` | `password123` | Guardian of Rohan Iyer (Isolated access) |
+
+*Additional 7 students and parents are cataloged below in the Cohort Directory.*
 
 ---
 
@@ -126,14 +141,19 @@ Edutrack/
 │   ├── components/                # Modular React presentation components
 │   │   ├── admin/
 │   │   │   └── EditUserModal.tsx  # User modification modal for staff, students & parents
+│   │   ├── billing/
+│   │   │   └── BillingAlertManager.tsx # Arrears modal and fee overdue alerting
 │   │   ├── faculty/
 │   │   │   ├── AssignmentFormModal.tsx
-│   │   │   ├── AttendanceSessionManager.tsx
+│   │   │   ├── AttendanceSessionManager.tsx # Real-time session attendance marker
 │   │   │   ├── MaterialFormModal.tsx
 │   │   │   ├── QuizAnalyticsModal.tsx
 │   │   │   ├── QuizFormModal.tsx
 │   │   │   ├── VideoFormModal.tsx
 │   │   │   └── YouTubeVideoPlayer.tsx
+│   │   ├── student/
+│   │   │   ├── StudentAttendanceSection.tsx # 75% statutory attendance & shortage monitor
+│   │   │   └── StudentBillingSection.tsx    # Fee invoices, checkout & receipt viewer
 │   │   ├── AdminDashboard.tsx     # Institutional administration console
 │   │   ├── FacultyDashboard.tsx   # Faculty grading & curriculum management portal
 │   │   ├── Header.tsx             # Universal responsive top navigation bar
@@ -147,9 +167,12 @@ Edutrack/
 │   │   └── mockData.ts            # Seed users, courses, quizzes, assignments & logs
 │   ├── types/
 │   │   └── index.ts               # Core TypeScript interface and type definitions
+│   ├── utils/
+│   │   └── academic.ts            # Academic calculation engine (attendance & GPA)
 │   ├── App.tsx                    # Top-level state coordinator & route controller
 │   ├── index.css                  # Global styles & Tailwind design tokens
 │   └── main.tsx                   # React root entry point
+├── EduTrack_LMS_Project_Report.md # Full enterprise project report & architecture specification
 ├── .env.example                   # Environment configuration template
 ├── package.json                   # Project dependencies and npm scripts
 ├── README.md                      # Comprehensive project documentation
@@ -160,6 +183,27 @@ Edutrack/
 
 ---
 
+## 👨‍🎓 Enrolled Student & Parent Cohort (Section VII-A)
+
+All 10 enrolled students and their corresponding legal parents/guardians are fully configured with authentic Indian naming, isolated parent-student relationship keys (`childStudentIds`), GPA scores, and academic fee ledger profiles.
+
+| # | Student Name | Reg Number | Student Login Email | Parent / Guardian | Parent Login Email | GPA | Fee Status |
+|---|---|---|---|---|---|:---:|:---:|
+| 1 | **Aarav Sharma** | `CS-2024-041` | `aarav.sharma@student.edutrack.edu` | **Raveendra Sharma** | `raveendra.sharma@gmail.com` | 3.82 | PAID |
+| 2 | **Diya Patel** | `CS-2024-042` | `diya.patel@student.edutrack.edu` | **Suresh Patel** | `suresh.patel@gmail.com` | 3.91 | PENDING |
+| 3 | **Rohan Iyer** | `CS-2024-043` | `rohan.iyer@student.edutrack.edu` | **Subramanian Iyer** | `subramanian.iyer@gmail.com` | 3.78 | OVERDUE |
+| 4 | **Ananya Deshmukh** | `CS-2024-044` | `ananya.deshmukh@student.edutrack.edu` | **Rajesh Deshmukh** | `rajesh.deshmukh@gmail.com` | 3.88 | PAID |
+| 5 | **Aditya Verma** | `CS-2024-045` | `aditya.verma@student.edutrack.edu` | **Manoj Verma** | `manoj.verma@gmail.com` | 3.65 | PAID |
+| 6 | **Pooja Sundaram** | `CS-2024-046` | `pooja.sundaram@student.edutrack.edu` | **Gopal Sundaram** | `gopal.sundaram@gmail.com` | 3.95 | PAID |
+| 7 | **Karthik Raman** | `CS-2024-047` | `karthik.raman@student.edutrack.edu` | **Venkatesh Raman** | `venkatesh.raman@gmail.com` | 3.72 | PENDING |
+| 8 | **Sneha Kulkarni** | `CS-2024-048` | `sneha.kulkarni@student.edutrack.edu` | **Anand Kulkarni** | `anand.kulkarni@gmail.com` | 3.84 | PAID |
+| 9 | **Vikram Choudhury** | `CS-2024-049` | `vikram.choudhury@student.edutrack.edu` | **Debashis Choudhury** | `debashis.choudhury@gmail.com` | 3.59 | OVERDUE |
+| 10 | **Meera Nair** | `CS-2024-050` | `meera.nair@student.edutrack.edu` | **Balachandran Nair** | `balachandran.nair@gmail.com` | 3.92 | PAID |
+
+*All accounts use standard demo security credentials: password `password123`.*
+
+---
+
 ## 🧪 Testing Core User Workflows
 
 To verify the platform end-to-end:
@@ -167,17 +211,16 @@ To verify the platform end-to-end:
 1. **Two-Stage Registration Test**:
    - On `http://localhost:3000`, switch to the **Register** tab.
    - Register a new **Student** account with an Indian name and select an Academic Class.
-   - Log in as the assigned Class Teacher (**Prof. Ananya Sharma** / `ananya.sharma@edutrack.edu`). Go to the **Registration Queue** and click **Confirm Student Registration**.
+   - Log in as the assigned Class Teacher (**Dr. R. Elankavi** / `elankavi.cse@edutrack.edu`). Go to the **Registration Queue** and click **Confirm Student Registration**.
    - Log in as Administrator (**Dr. Rajesh Verma** / `admin@edutrack.edu`). In the **Registrations** tab, click **Approve & Activate**. The new user is now live and can log in immediately.
-2. **Admin User Profile Editing**:
-   - Log in as Admin (`admin@edutrack.edu`).
-   - Scroll down to the **Registered Accounts Directory**.
-   - Click the **Edit** button next to any staff, student, or parent to modify department, roll number, class assignment, or linked children.
-3. **Faculty & Student Academic Cycle**:
-   - In Faculty Dashboard, create an interactive Quiz or publish a new YouTube lecture video.
-   - Switch to Student portal (`aarav.sharma@student.edutrack.edu`), watch the video, and complete the quiz with instant score calculation.
-4. **Parent Performance Oversight**:
-   - Log in as Parent (`raveendra.sharma@edutrack.edu`) to review attendance compliance gauges, subject grade averages, and send parent-teacher feedback remarks.
+2. **Attendance Tracking & 75% Statutory Compliance**:
+   - Log in as Faculty (`elankavi.cse@edutrack.edu`) and record session attendance under **PSP(T+P)**.
+   - Log in as Student (`aarav.sharma@student.edutrack.edu`) to verify real-time percentage updates, compliance badge (`GOOD STANDING` vs `SHORTAGE ALERT`), and classes needed calculator.
+3. **Semester Fee Payment & Receipt Generation**:
+   - Log in as Student (`diya.patel@student.edutrack.edu`) or Parent (`suresh.patel@gmail.com`).
+   - Settle pending semester dues using UPI/NetBanking mock checkout and download the official payment receipt.
+4. **Admin User Profile & Class Timetable Management**:
+   - Log in as Admin (`admin@edutrack.edu`) to audit registered users, update fee alerts, or review the weekly 30-period timetable.
 
 ---
 
@@ -192,3 +235,4 @@ To verify the platform end-to-end:
 ## 📄 License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
