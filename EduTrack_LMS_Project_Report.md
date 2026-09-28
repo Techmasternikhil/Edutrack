@@ -1,354 +1,289 @@
-# EduTrack LMS — Enterprise System Architecture & Project Report
+# EduTrack LMS — Comprehensive Enterprise Project Report
 
-**Document Version**: 2.4.0  
-**Project**: EduTrack LMS (Enterprise University Learning Management System)  
-**Target Environment**: Node.js v20+ / React 19 / TypeScript / Oracle Database 19c-23c  
-**Repository**: `E:\Projects\Edutrack` / [GitHub Repository](https://github.com/Techmasternikhil/Edutrack.git)
-
----
-
-## 1. Executive Summary
-
-**EduTrack LMS** is an enterprise-grade academic intelligence and learning management system engineered for higher-education universities and research institutions. The platform unifies instructional management, student learning diagnostics, statutory attendance compliance, and parent/guardian oversight into an isolated, role-segregated single-page application (SPA) backed by an Express REST API engine and enterprise Oracle Database DDL persistence specifications.
-
-### Core Value Propositions
-1. **Multi-Role Role-Based Access Control (RBAC)**: Strict segregation between `ADMIN`, `FACULTY`, `STUDENT`, and `PARENT` personas.
-2. **Parental Academic Transparency**: Non-intrusive monitoring granting guardians real-time visibility into attendance compliance (statutory <75% automated alerting), cumulative GPA, and assignment score distributions without granting access to internal staff records.
-3. **Automated Assessment & Evaluation**: Real-time multiple-choice quiz evaluation engine and rubric-based coursework submission grading with instant feedback loops.
-4. **Institutional Security Governance**: Self-service onboarding with multi-tier Administrator verification queues and tamper-evident audit logging.
-5. **Class Teacher Onboarding Pipeline**: Two-stage registration approval workflow with dedicated faculty and administrative oversight.
+**Document Title**: Complete System Specification, Architectural Design & Engineering Report  
+**System Name**: EduTrack LMS (Enterprise University Learning Management & Academic Intelligence System)  
+**Version**: 3.0.0 (Production Release)  
+**Engineering Stack**: React 19, TypeScript, Tailwind CSS v4, Express.js REST API, Oracle Database 19c-23c Enterprise Schema, Vite  
+**Repository**: `E:\Projects\Edutrack` / [GitHub: Techmasternikhil/Edutrack](https://github.com/Techmasternikhil/Edutrack.git)  
 
 ---
 
-## 2. System Architecture & Component Topology
+## 1. Executive Summary & Project Overview
 
-EduTrack LMS uses a full-stack architecture combining a client-side Single-Page Application (React 19, TypeScript, Tailwind CSS v4) with an embedded Express.js REST API middleware layer, orchestrated via Vite.
+**EduTrack LMS** is an enterprise-grade academic intelligence and learning operations platform developed for higher education institutions, universities, and polytechnic colleges. Designed around statutory academic governance and strict Role-Based Access Control (RBAC), the platform brings together four distinct stakeholder personas: **University Administrators**, **Faculty Members & Class Teachers**, **Students**, and **Parents/Guardians**.
+
+### Core Problems Solved
+1. **Statutory Attendance Deficit Blindspots**: Automated tracking of the statutory 75% attendance threshold with proactive warnings and real-time guardian visibility.
+2. **Disconnected Institutional Billing & Financial Clearance**: Unified invoicing, student/parent multi-channel fee payment (UPI, Cards, Net Banking), and automated administrative/faculty payment alert dispatches.
+3. **Fragmented Academic Onboarding**: Strict two-stage registration pipeline (Class Teacher verification followed by Central Administrative provisioning).
+4. **Pedagogical Assessment & Multimedia Learning**: Native YouTube lecture integration, rubric-driven coursework submission/grading, and real-time timed quiz engine with immediate performance analytics.
+
+---
+
+## 2. Multi-Role Use Case Diagram
+
+The following diagram illustrates the complete actor-to-feature mapping across the four institutional user roles:
 
 ```mermaid
-graph TB
-    subgraph "Client Layer (React 19 + TypeScript)"
-        UI[App.tsx State Engine]
-        AuthGate[LoginScreen.tsx: Role-Based Gate & Registration]
-        HeaderBar[Header.tsx: Session Status, Alerts & Sign Out]
-        
-        subgraph "Role Portals"
-            AdminPortal[AdminDashboard.tsx]
-            FacultyPortal[FacultyDashboard.tsx]
-            StudentPortal[StudentDashboard.tsx]
-            ParentPortal[ParentDashboard.tsx]
-        end
+graph LR
+    %% Actors
+    Admin([University Administrator])
+    Faculty([Faculty / Class Teacher])
+    Student([Enrolled Student])
+    Parent([Parent / Guardian])
 
-        Modals[UserProfileModal.tsx]
+    %% System Boundaries
+    subgraph "EduTrack LMS Platform"
+        %% Auth & Security
+        UC_Auth[1. Authenticate & Session Management]
+        UC_RegTwoStage[2. Two-Stage Registration Approval]
+        UC_Audit[3. View Tamper-Evident Audit Logs]
+        UC_UserManage[4. User Account Provisioning & Status]
+
+        %% Academic Operations
+        UC_ClassManage[5. Academic Classes & Teacher Assignment]
+        UC_CourseManage[6. Course Allocation & Capacity Management]
+        UC_Materials[7. Upload Lecture Materials & YouTube Videos]
+        UC_Attendance[8. Session Attendance Marking & Analytics]
+
+        %% Assessments & Coursework
+        UC_Assignments[9. Create & Grade Coursework Assignments]
+        UC_SubmitWork[10. Submit Assignment Projects & Files]
+        UC_Quizzes[11. Author Timed Quizzes & Analytics]
+        UC_TakeQuiz[12. Attempt Online Timed Quizzes]
+
+        %% Financial Clearance & Billing
+        UC_CreateInvoice[13. Generate Institutional Fee Invoices]
+        UC_SendBillingAlert[14. Dispatch Billing Dues Alerts]
+        UC_PayFee[15. Settle Semester Fees via UPI/Card]
+        UC_DownloadReceipt[16. View & Download Fee Receipts]
+
+        %% Parental Oversight & Communication
+        UC_ParentMonitor[17. Non-Intrusive Academic & Attendance Monitoring]
+        UC_ParentInquiry[18. Submit & Track Faculty Inquiries]
+        UC_FacultyReply[19. Respond to Parent Academic Inquiries]
     end
 
-    subgraph "API & Controller Middleware (server.ts)"
-        Router[/api/* Express Router]
-        AuthCtrl[Auth & Verification Service]
-        AcademicCtrl[Course, Quiz & Materials Service]
-        GradingCtrl[Submission & Evaluation Engine]
-        ParentCtrl[Parent Inquiry & Monitoring Service]
-        AuditCtrl[Security Audit Logging Engine]
-    end
+    %% Actor Connections
+    Admin --> UC_Auth
+    Admin --> UC_RegTwoStage
+    Admin --> UC_Audit
+    Admin --> UC_UserManage
+    Admin --> UC_ClassManage
+    Admin --> UC_CourseManage
+    Admin --> UC_CreateInvoice
+    Admin --> UC_SendBillingAlert
 
-    subgraph "Persistence & Schema Layer"
-        MemStore[(In-Memory Seed Data Stores)]
-        OracleDB[(Oracle Database 19c/21c/23c DDL)]
-    end
+    Faculty --> UC_Auth
+    Faculty --> UC_RegTwoStage
+    Faculty --> UC_Materials
+    Faculty --> UC_Attendance
+    Faculty --> UC_Assignments
+    Faculty --> UC_Quizzes
+    Faculty --> UC_SendBillingAlert
+    Faculty --> UC_FacultyReply
 
-    AuthGate -->|Authenticated Session| UI
-    UI --> AdminPortal
-    UI --> FacultyPortal
-    UI --> StudentPortal
-    UI --> ParentPortal
-    UI -.-> Modals
-    UI -.-> HeaderBar
+    Student --> UC_Auth
+    Student --> UC_Materials
+    Student --> UC_SubmitWork
+    Student --> UC_TakeQuiz
+    Student --> UC_PayFee
+    Student --> UC_DownloadReceipt
 
-    AdminPortal -->|HTTP REST| Router
-    FacultyPortal -->|HTTP REST| Router
-    StudentPortal -->|HTTP REST| Router
-    ParentPortal -->|HTTP REST| Router
-    Modals -->|POST /api/ai/assistant| Router
-
-    Router --> AuthCtrl
-    Router --> AcademicCtrl
-    Router --> GradingCtrl
-    Router --> ParentCtrl
-    Router --> AuditCtrl
-
-    AuthCtrl --> MemStore
-    AcademicCtrl --> MemStore
-    GradingCtrl --> MemStore
-    ParentCtrl --> MemStore
-    AuditCtrl --> MemStore
-    
-    MemStore -.->|DDL Specification| OracleDB
+    Parent --> UC_Auth
+    Parent --> UC_ParentMonitor
+    Parent --> UC_PayFee
+    Parent --> UC_DownloadReceipt
+    Parent --> UC_ParentInquiry
 ```
 
 ---
 
-## 3. Role-Based Access Control (RBAC) & Permission Matrix
+## 3. Comprehensive Feature Breakdown by Stakeholder
 
-EduTrack LMS enforces strict privilege boundaries. No user can view, mutate, or intercept records outside their authorized role boundary.
+### 3.1. University Administrator Persona
+- **Institutional Governance Dashboard**: Overview of total enrolled students, faculty count, course load, pending approval queues, and gross fee collections.
+- **Two-Stage Registration Authority**: Final approval queue for students and parents who have passed class teacher verification; direct approval queue for faculty applicants.
+- **Academic Class & Section Management**: Creation of academic classes (e.g., *B.Tech Computer Science — Semester 4 (Section A)*), assignment of designated Class Teachers, and tracking student class enrollments.
+- **Curriculum & Course Management**: Course creation with assigned department, credits, semester, student capacity limits, and faculty allocation.
+- **Institutional Billing Engine**: Generation of student invoices for Tuition, Lab/Exam fees, Library, Hostel, Transport, and Sports.
+- **Fee Dues & Defaulter Alerting**: Real-time filtering of pending and overdue invoices, with one-click dispatch of multi-channel billing alerts to both students and parents.
+- **Security Audit Logs**: Immutable log tracking every administrative action, user login, fee payment, and account state mutation with timestamps and IP addresses.
 
-| Feature / Resource | Administrator (`ADMIN`) | Faculty (`FACULTY`) | Student (`STUDENT`) | Parent (`PARENT`) |
-| :--- | :---: | :---: | :---: | :---: |
-| **Self-Service Public Registration** | ❌ (Denied) | ✅ (Pending Approval) | ✅ (Pending Approval) | ✅ (Pending Approval) |
-| **Approve / Reject Registrations** | ✅ (Full) | ❌ (Denied) | ❌ (Denied) | ❌ (Denied) |
-| **View Institutional Audit Logs** | ✅ (Full) | ❌ (Denied) | ❌ (Denied) | ❌ (Denied) |
-| **Create & Allocate Courses** | ✅ (Full) | ❌ (Denied) | ❌ (Denied) | ❌ (Denied) |
-| **Upload Lecture Materials & Videos** | ❌ (Denied) | ✅ (Assigned Courses) | ❌ (Denied) | ❌ (Denied) |
-| **Publish Quizzes & Assignments** | ❌ (Denied) | ✅ (Assigned Courses) | ❌ (Denied) | ❌ (Denied) |
-| **Evaluate & Grade Submissions** | ❌ (Denied) | ✅ (Assigned Courses) | ❌ (Denied) | ❌ (Denied) |
-| **Attempt Quizzes & Upload Projects** | ❌ (Denied) | ❌ (Denied) | ✅ (Enrolled Only) | ❌ (Denied) |
-| **View Personal Grades & Attendance** | ❌ (Denied) | ❌ (Denied) | ✅ (Self Only) | ❌ (Denied) |
-| **Child Academic Progress Tracking** | ❌ (Denied) | ❌ (Denied) | ❌ (Denied) | ✅ (Linked Child Only) |
-| **Submit Parent Inquiries / Remarks** | ❌ (Denied) | ❌ (Denied) | ❌ (Denied) | ✅ (Authorized Child) |
-| **Reply to Parent Inquiries** | ❌ (Denied) | ✅ (Assigned Courses) | ❌ (Denied) | ❌ (Denied) |
+### 3.2. Faculty & Class Teacher Persona
+- **Subject Courseware Management**: Creation and publication of lecture notes, PDF guides, presentations, and external research links organized by academic module/unit.
+- **Native YouTube Video Player**: Direct embedding of YouTube lecture videos with thumbnail preview, video duration, module assignment, and external link handling.
+- **Session Attendance Register**: Date-based attendance marking (`PRESENT`, `ABSENT`, `LATE`) with instant statutory percentage calculation and automatic flagging of students under the 75% statutory compliance threshold.
+- **Coursework & Rubric Grading**: Creation of assignments with due dates and maximum marks; evaluation of student file submissions with marks and constructive feedback.
+- **Interactive Quiz Authoring & Analytics**: Creation of multiple-choice timed quizzes with randomized options, instant evaluation, and score analytics across all enrolled students.
+- **Class Teacher Approval Gateway**: Verification of student registration numbers and guardian relationships for applicants belonging to the teacher's assigned class.
+- **Guardian Inquiry Resolution**: Direct communication channel to review and respond to parent inquiries regarding student performance and attendance.
+
+### 3.3. Enrolled Student Persona
+- **Student Academic Dashboard**: Real-time visibility into cumulative GPA, overall attendance compliance percentage, pending coursework deadlines, and active quizzes.
+- **Subject-Wise Live & Historical Attendance Monitoring**: Dedicated **My Attendance** dashboard providing overall attendance percentage, statutory compliance badge (`COMPLIANT` vs `WARNING`), present/late/absent session counts, subject-wise attendance breakdown table with shortage counts (consecutive classes needed to reach 75%), recent live submissions from instructors, and complete date/subject/status filterable attendance ledger.
+- **Multimedia Learning Portal**: Access to course materials, downloadable PDFs, and responsive embedded YouTube lecture streams.
+- **Assignment Submission Engine**: File upload interface for submitting project files and coursework before deadlines.
+- **Timed Online Quiz Engine**: Interactive assessment mode with countdown timer, question progression, and instant score computation with detailed solution reviews.
+- **Fee Payment & Invoicing Hub**: Detailed view of all semester billings with status tags (`PAID`, `PENDING`, `OVERDUE`); integrated mock payment gateway supporting UPI (VPA) and Debit/Credit Cards; instantaneous receipt generation.
+
+### 3.4. Parent / Guardian Persona
+- **Multi-Child Academic Oversight**: Isolated portal strictly restricted to the parent's authorized wards via `childStudentIds`.
+- **Child Subject-Wise Live & Historical Attendance Monitoring**: Dedicated **Child Attendance** dashboard mirroring the student's metrics in real time; provides subject-wise breakdown, visual session distribution charts (Present, Late, Absent), recent live faculty submissions, interactive history ledger with date/subject/status filters, and automatic statutory shortage warnings when attendance dips below 75%.
+- **Academic Performance & Marks Visualizer**: Coursework assignment grades and quiz scores rendered as comparative bar charts.
+- **Direct Ward Fee Settlement**: Full access to the student billing section allowing parents to settle outstanding college dues and download official tax receipts.
+- **Faculty Inquiry Channel**: Direct messaging to course instructors and class teachers categorized by `ACADEMIC_CONCERN`, `ATTENDANCE`, `APPRECIATION`, or `GENERAL`.
 
 ---
 
-## 4. End-to-End User Workflows
+## 4. End-to-End System Workflows
 
-### 4.1 Onboarding & Admin Verification Flow
-
+### 4.1. Two-Stage User Onboarding Workflow
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Applicant (Student / Faculty / Parent)
-    participant UI as LoginScreen.tsx
-    participant API as /api/auth/signup (Express)
-    participant Store as In-Memory Store / Oracle
+    actor Applicant as Student / Parent Applicant
+    actor Teacher as Assigned Class Teacher (Faculty)
     actor Admin as University Administrator
-    participant AdminUI as AdminDashboard.tsx
-    participant ApprAPI as /api/users/:id/approval
+    participant System as EduTrack Core (Express & React)
 
-    User->>UI: Select Role & Fill Registration Form
-    Note over User,UI: Faculty: Dept | Student: Reg# | Parent: Linked Student
-    UI->>API: POST /api/auth/signup
-    API->>Store: Persist user with status = 'PENDING'
-    API->>Store: Generate SYSTEM notification for Admin
-    API-->>UI: 201 Created (Pending Verification)
-    UI-->>User: Display Approval Required Alert
+    Applicant->>System: Submit Registration (Name, Email, Role, Class, Reg No)
+    System->>System: Create User (Status: PENDING) & Request (PENDING_TEACHER_REVIEW)
+    Note over System: User cannot log in until approved
 
-    Admin->>UI: Login as Administrator
-    UI->>AdminUI: Open Admin Console
-    AdminUI->>API: GET /api/users?status=PENDING
-    API-->>AdminUI: List pending applicants
-    Admin->>AdminUI: Click "Approve" (or "Decline")
-    AdminUI->>ApprAPI: PUT /api/users/:id/approval { status: 'APPROVED' }
-    ApprAPI->>Store: Update user status & record Audit Log
-    ApprAPI-->>AdminUI: Success
-    Note over User,UI: User can now authenticate into authorized portal
+    Teacher->>System: Log in & Open "Class Registrations" Queue
+    Teacher->>System: Verify student identity & class eligibility
+    alt Verification Approved
+        Teacher->>System: Confirm Applicant (status -> TEACHER_CONFIRMED)
+        System->>System: Elevate Request to PENDING_ADMIN_REVIEW
+    else Verification Rejected
+        Teacher->>System: Reject Applicant (REJECTED_BY_TEACHER)
+        System->>Applicant: Account denied
+    end
+
+    Admin->>System: Open "Administrative Approval Queue"
+    Admin->>System: Final validation & provision account
+    alt Final Administrative Approval
+        Admin->>System: Approve (status -> APPROVED, accountStatus -> ACTIVE)
+        System->>System: Log to Tamper-Evident Audit Trail
+        Applicant->>System: Log in successfully & access personalized portal
+    else Administrative Rejection
+        Admin->>System: Reject (status -> REJECTED)
+        System->>Applicant: Access denied
+    end
 ```
 
 ---
 
-### 4.2 Academic Coursework & Evaluation Flow
+### 4.2. Invoicing, Billing Alert, and Fee Payment Workflow
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Admin as Administrator / Faculty
+    actor Student as Student / Parent
+    participant Server as REST API (server.ts)
+    participant Store as Institutional Ledger (feeStore)
+    participant Notif as Notification Engine
 
+    Admin->>Server: POST /api/fees (studentId, amount, dueDate, category, title)
+    Server->>Store: Create FeeRecord (Status: PENDING)
+    Server->>Notif: Dispatch Invoicing Alert to Student & Linked Parents
+    
+    opt When Fee Nears Due Date or Becomes Overdue
+        Admin->>Server: POST /api/fees/:id/remind (customMessage)
+        Server->>Notif: Send High-Priority BILLING Notification to Student & Parents
+        Server->>Server: Log reminder event in Institutional Audit Trail
+    end
+
+    Student->>Server: POST /api/fees/:id/pay (paymentMethod: UPI/Card, transactionRef)
+    Server->>Store: Update FeeRecord (Status: PAID, paidAt: NOW, receiptNumber: REC-*)
+    Server->>Notif: Dispatch Payment Receipts to Student & Guardian accounts
+    Server->>Server: Append AUDIT_LOG: "FEE_PAYMENT ₹amount confirmed"
+    Server-->>Student: Return Official Tax Receipt & Confirmation
+```
+
+---
+
+### 4.3. Live & Historical Attendance Pipeline & Academic Calculation Engine
 ```mermaid
 sequenceDiagram
     autonumber
     actor Faculty as Course Instructor
-    participant FacUI as FacultyDashboard.tsx
-    participant API as Express API (/api/*)
-    actor Student as Enrolled Student
-    participant StuUI as StudentDashboard.tsx
-    actor Parent as Guardian (Raveendra)
-    participant ParUI as ParentDashboard.tsx
+    participant API as Express API (/api/courses/:id/attendance/bulk)
+    participant Store as Attendance Store (Oracle Schema)
+    participant Engine as Academic Calculation Engine (academic.ts)
+    actor Student as Student (My Attendance)
+    actor Parent as Guardian (Child Attendance)
 
-    Faculty->>FacUI: Post Lab Assignment with instructions & deadline
-    FacUI->>API: POST /api/assignments
-    API-->>Student: Broadcast Notification: "New Assignment Posted"
+    Faculty->>API: POST /api/courses/:id/attendance/bulk (date, records: PRESENT/LATE/ABSENT)
+    API->>Store: Atomic upsert attendance records (UNIQUE: course_id, student_id, date)
+    API->>API: Append to Institutional Audit Trail (ATTENDANCE_RECORDED)
+    
+    par Real-Time Student Refresh
+        Student->>API: GET /api/attendance/summary/:studentId (Requester Validation)
+        API->>Engine: calculateAttendanceMetrics(records) & calculateSubjectAttendanceMetrics()
+        Engine-->>Student: Return Overall %, Subject-wise breakdown, and Shortage alerts
+    and Authorized Parent Monitoring
+        Parent->>API: GET /api/attendance/summary/:studentId (Enforce childStudentIds check)
+        API->>Engine: calculateAttendanceMetrics(records) & calculateSubjectAttendanceMetrics()
+        Engine-->>Parent: Return identical verified ward metrics, distribution charts, and history
+    end
 
-    Student->>StuUI: Browse assignment & upload project file
-    StuUI->>API: POST /api/submissions { status: 'PENDING' }
-    API-->>Faculty: Notification: "Assignment Submitted"
-
-    Faculty->>FacUI: Open Evaluation Queue & grade submission (Marks + Feedback)
-    FacUI->>API: PUT /api/submissions/:id/grade
-    API-->>Student: Notification: "Assignment Graded: 94/100"
-
-    Parent->>ParUI: Login to Parent Portal
-    ParUI->>API: GET /api/parent/children?parentId=usr-parent-1
-    API-->>ParUI: Return Child-Only submissions, grades, & attendance
-    Note over Parent,ParUI: Visual Histogram updates with new grade
+    opt Attendance Correction by Faculty/Admin
+        Faculty->>API: PUT /api/attendance/:id (new status: PRESENT, reason)
+        API->>Store: Update record state
+        API->>API: Log ATTENDANCE_CORRECTED in Audit Logs
+        API->>Engine: Recalculate metrics immediately across all client views
+    end
 ```
 
 ---
 
-### 4.3 Quiz Assessment Execution Flow
+## 5. Relational Data Architecture (Oracle Database Schema)
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Student as Enrolled Student
-    participant StuUI as StudentDashboard.tsx
-    participant QuizEngine as /api/quizzes/:id/submit
-    participant Store as Quiz Attempts Store
-
-    Student->>StuUI: Click "Start Quiz" on Midterm Assessment
-    StuUI->>StuUI: Launch interactive timer & MCQ questions
-    Student->>StuUI: Select options and click "Submit Answers"
-    StuUI->>QuizEngine: POST /api/quizzes/:id/submit { answers, timeTaken }
-    QuizEngine->>QuizEngine: Evaluate correctOptionIndex & calculate total score
-    QuizEngine->>Store: Record QuizAttempt record
-    QuizEngine-->>StuUI: Return { score, totalMarks, attemptId }
-    StuUI->>StuUI: Render instant score modal & fire celebratory confetti
-```
-
----
-
-### 4.4 Parent Inquiry & Instructor Feedback Flow
-
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Parent as Guardian (Raveendra)
-    participant ParUI as ParentDashboard.tsx
-    participant API as /api/parent/reviews
-    actor Faculty as Course Instructor
-    participant FacUI as FacultyDashboard.tsx
-
-    Parent->>ParUI: Fill Inquiry Form (Subject, Category, Message)
-    Note over Parent,ParUI: Category: Academic Concern / Attendance / Appreciation
-    ParUI->>API: POST /api/parent/reviews { status: 'SUBMITTED' }
-    API-->>Faculty: Notification: "New Parent Inquiry Received"
-
-    Faculty->>FacUI: View Parent Remarks Queue
-    Faculty->>FacUI: Enter official instructor reply
-    FacUI->>API: PUT /api/parent/reviews/:id/reply
-    API-->>Parent: Notification: "Faculty Replied to Inquiry"
-    ParUI->>ParUI: Display instructor reply inside parent thread
-```
-
----
-
-## 5. Enterprise Relational Database Specification (Oracle 19c/21c/23c)
-
-The database schema defined in `backend/oracle-schema.sql` establishes referential integrity, automated timestamps, cascading delete actions, and check constraints:
+The platform is backed by an enterprise-grade Oracle Database 19c/21c/23c schema specification (`backend/oracle-schema.sql`):
 
 ```mermaid
 erDiagram
-    USERS ||--o{ STUDENTS : "is a"
-    USERS ||--o{ FACULTY : "is a"
-    USERS ||--o{ PARENTS : "is a"
-    USERS ||--o{ PARENT_REVIEWS : "authors"
-    USERS ||--o{ AUDIT_LOGS : "triggers"
-    STUDENTS ||--o{ PARENTS : "monitored by"
-    STUDENTS ||--o{ ENROLLMENTS : "registers"
-    COURSES ||--o{ ENROLLMENTS : "has"
-    FACULTY ||--o{ COURSES : "instructs"
-    COURSES ||--o{ ASSIGNMENTS : "contains"
-    ASSIGNMENTS ||--o{ ASSIGNMENT_SUBMISSIONS : "receives"
-    STUDENTS ||--o{ ASSIGNMENT_SUBMISSIONS : "submits"
+    ACADEMIC_CLASSES ||--o{ USERS : "assigned to"
+    USERS ||--o{ COURSES : "instructs"
+    USERS ||--o{ ENROLLMENTS : "enrolled in"
+    COURSES ||--o{ ENROLLMENTS : "contains"
+    COURSES ||--o{ COURSE_MATERIALS : "provides"
+    COURSES ||--o{ ASSIGNMENTS : "assigns"
+    ASSIGNMENTS ||--o{ SUBMISSIONS : "submitted for"
+    USERS ||--o{ SUBMISSIONS : "submits"
     COURSES ||--o{ QUIZZES : "holds"
-    QUIZZES ||--o{ QUESTIONS : "contains"
-    QUIZZES ||--o{ QUIZ_ATTEMPTS : "records"
-    STUDENTS ||--o{ QUIZ_ATTEMPTS : "takes"
+    QUIZZES ||--o{ QUIZ_QUESTIONS : "consists of"
+    QUIZZES ||--o{ QUIZ_ATTEMPTS : "attempted in"
+    USERS ||--o{ QUIZ_ATTEMPTS : "takes"
     COURSES ||--o{ ATTENDANCE : "tracks"
-    STUDENTS ||--o{ ATTENDANCE : "attends"
+    USERS ||--o{ ATTENDANCE : "logged for"
+    USERS ||--o{ PARENT_REVIEWS : "inquiries for"
+    USERS ||--o{ FEE_RECORDS : "billed to"
+    USERS ||--o{ AUDIT_LOGS : "performed by"
 
     USERS {
         VARCHAR2 user_id PK
         VARCHAR2 name
         VARCHAR2 email UK
-        VARCHAR2 password_hash
         VARCHAR2 role
-        VARCHAR2 department
-        VARCHAR2 avatar_url
-        TIMESTAMP created_at
+        VARCHAR2 status
+        VARCHAR2 class_id FK
+        VARCHAR2 reg_number
+        VARCHAR2 child_student_ids
     }
 
-    STUDENTS {
-        VARCHAR2 student_id PK
-        VARCHAR2 user_id FK
-        VARCHAR2 student_reg_number UK
-        NUMBER gpa
-        NUMBER semester
-    }
-
-    FACULTY {
-        VARCHAR2 faculty_id PK
-        VARCHAR2 user_id FK
-        VARCHAR2 faculty_employee_code UK
-        VARCHAR2 designation
-    }
-
-    PARENTS {
-        VARCHAR2 parent_id PK
-        VARCHAR2 user_id FK
+    FEE_RECORDS {
+        VARCHAR2 fee_id PK
         VARCHAR2 student_id FK
-        VARCHAR2 relationship_type
-    }
-
-    PARENT_REVIEWS {
-        VARCHAR2 review_id PK
-        VARCHAR2 parent_id FK
-        VARCHAR2 student_id FK
-        VARCHAR2 course_id
         VARCHAR2 category
         VARCHAR2 title
-        CLOB message
+        NUMBER amount
+        DATE due_date
         VARCHAR2 status
-        CLOB faculty_reply
-        TIMESTAMP created_at
-    }
-
-    COURSES {
-        VARCHAR2 course_id PK
-        VARCHAR2 code UK
-        VARCHAR2 title
-        CLOB description
-        VARCHAR2 department
-        NUMBER credits
-        NUMBER semester
-        VARCHAR2 faculty_id FK
-    }
-
-    ASSIGNMENTS {
-        VARCHAR2 assignment_id PK
-        VARCHAR2 course_id FK
-        VARCHAR2 title
-        CLOB description
-        TIMESTAMP deadline
-        NUMBER max_marks
-    }
-
-    ASSIGNMENT_SUBMISSIONS {
-        VARCHAR2 submission_id PK
-        VARCHAR2 assignment_id FK
-        VARCHAR2 student_id FK
-        TIMESTAMP submitted_at
-        VARCHAR2 file_url
-        VARCHAR2 status
-        NUMBER marks_obtained
-        CLOB feedback
-    }
-
-    QUIZZES {
-        VARCHAR2 quiz_id PK
-        VARCHAR2 course_id FK
-        VARCHAR2 title
-        NUMBER duration_minutes
-        NUMBER total_marks
-    }
-
-    QUESTIONS {
-        VARCHAR2 question_id PK
-        VARCHAR2 quiz_id FK
-        CLOB question_text
-        CLOB options_json
-        NUMBER correct_option_index
-        NUMBER marks
-    }
-
-    QUIZ_ATTEMPTS {
-        VARCHAR2 attempt_id PK
-        VARCHAR2 quiz_id FK
-        VARCHAR2 student_id FK
-        NUMBER score
-        TIMESTAMP submitted_at
-        NUMBER time_taken_seconds
+        TIMESTAMP paid_at
+        VARCHAR2 receipt_number
     }
 
     ATTENDANCE {
@@ -362,7 +297,7 @@ erDiagram
     AUDIT_LOGS {
         VARCHAR2 log_id PK
         VARCHAR2 performed_by
-        VARCHAR2 user_role
+        VARCHAR2 role
         VARCHAR2 action
         CLOB details
         VARCHAR2 ip_address
@@ -372,89 +307,83 @@ erDiagram
 
 ---
 
-## 6. REST API Endpoint Catalog
+## 6. Security, Isolation, and Compliance Architecture
 
-All endpoints are hosted by Express (`server.ts`) and execute under the `/api` prefix:
-
-### Authentication & User Management
-- `POST /api/auth/login`: Authenticates credentials, verifies approval status, and issues simulated JWT token.
-- `POST /api/auth/signup`: Public self-service registration for Faculty, Students, and Parents (`status = 'PENDING'`). Admin registration is blocked with HTTP 403.
-- `PUT /api/users/:id/approval`: Administrator endpoint to approve (`APPROVED`) or decline (`REJECTED`) an applicant.
-- `GET /api/users`: Returns registered user accounts with optional `role` and `status` query filtering.
-
-### Course & Content Operations
-- `GET /api/courses` & `POST /api/courses`: CRUD operations for curriculum modules, capacity limits, and schedules.
-- `GET /api/materials` & `POST /api/materials`: Lecture notes, PDF guides, slide decks, and external media links.
-
-### Coursework & Automated Grading
-- `GET /api/assignments` & `POST /api/assignments`: Assignment creation and deadline publishing.
-- `GET /api/submissions` & `POST /api/submissions`: Student project upload handler.
-- `PUT /api/submissions/:id/grade`: Instructor scoring and written feedback recording.
-
-### Quizzes & Assessment
-- `GET /api/quizzes` & `POST /api/quizzes`: Multi-question assessment manager.
-- `POST /api/quizzes/:id/submit`: Real-time quiz scoring engine comparing candidate answers against `correctOptionIndex`.
-- `GET /api/quiz-attempts`: Returns candidate assessment histories.
-
-### Attendance & Statutory Compliance
-- `GET /api/attendance` & `POST /api/attendance`: Session-by-session presence tracking (`PRESENT`, `ABSENT`, `LATE`).
-
-### Parent / Guardian Portal
-- `GET /api/parent/children`: Aggregates academic metrics (attendance %, GPA, submissions, quiz scores) restricted to linked child IDs.
-- `GET /api/parent/reviews` & `POST /api/parent/reviews`: Parent inquiries categorized by `ACADEMIC_CONCERN`, `ATTENDANCE`, `APPRECIATION`, or `GENERAL`.
-- `PUT /api/parent/reviews/:id/reply`: Faculty response dispatcher.
-
-### System Auditing & Backend Source
-- `GET /api/audit-logs`: Institutional security activity log.
-- `GET /api/backend-code`: Serves complete production Oracle SQL DDL script and Spring Boot microservice files.
+1. **Role-Based Isolation (RBAC)**: All UI routes, view triggers, and backend controllers validate caller role identity. Students and parents cannot query instructor evaluation queues, staff rosters, or administrative audit logs.
+2. **Guardian Data Segregation**: Parents can access *only* the specific student records linked to their account via `childStudentIds`. All Recharts visual metrics, submission logs, and attendance percentages are filtered before rendering.
+3. **Statutory Threshold Governance**: Constant `APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD = 75%` is enforced uniformly across frontend dashboards and backend analytics via [`src/utils/academic.ts`](file:///e:/Projects/Edutrack/src/utils/academic.ts).
+4. **Tamper-Evident Audit Logging**: System operations (user login, registration status modification, invoice creation, fee payment, and grade entry) record immutable entries in `auditLogsStore`.
 
 ---
 
-## 7. Security, Privacy & Data Isolation Model
+## 7. Verification & Production Build Status
 
-1. **Child-Only Boundary**:
-   - Guardians cannot query or view any student other than their explicitly authorized `childStudentIds`.
-   - Recharts visual metrics, submission logs, and attendance percentages are filtered before rendering.
-2. **Staff Privilege Isolation**:
-   - Parents cannot view internal faculty records, staff communications, or admin controls.
-   - Students cannot view other candidates' submission archives or instructor grading queues.
-3. **Admin Privilege Isolation**:
-   - Administrator accounts cannot be self-registered publicly.
-   - All approvals trigger tamper-evident audit log entries recording timestamp, actor, and IP address.
-4. **Session Management**:
-   - Client sessions are managed via structured local session tokens and can be terminated instantly via the **Sign Out** control.
+- **Static Type Checking**: `npx tsc --noEmit` passes with **0 errors**.
+- **Production Asset Compilation**: `npm run build` compiles clean production artifacts via Vite and bundles `server.ts` into `dist/server.cjs` via esbuild.
+- **E2E Tested Core Flows**:
+  - Two-stage registration approval (Applicant -> Class Teacher -> Admin -> Verified Login).
+  - Admin invoice generation and multi-channel billing dues reminders.
+  - Student and Parent fee payment via UPI / Card with instant receipt generation.
+  - Session attendance marking with statutory threshold warnings (<75%).
+  - YouTube lecture streaming and timed quiz evaluation.
+  - Multi-faculty assignment for combined Theory + Practical subjects (`PSP(T+P)`, `OS(T+P)`).
+  - Dynamic faculty course access and backend 403 Forbidden verification for unassigned courses.
 
 ---
 
-## 8. Deployment & Execution Guide
+## 8. Official Academic Context & Timetable Matrix (AY 2026–2027)
 
-### Local Development
-```powershell
-# Navigate to directory
-cd E:\Projects\Edutrack
+### Academic Metadata
+- **Academic Year**: 2026–2027
+- **Semester**: IV (ODD)
+- **Section**: Section VII / VII-A
+- **Department & Program**: Computer Science and Engineering (CSE)
+- **Faculty Advisor**: Dr. R. Elankavi
+- **Effective From**: 01-07-2026
 
-# Install dependencies
-npm install
+### Prescribed Curriculum & Faculty Mapping
 
-# Start full-stack development server (Express + Vite)
-npm run dev
-# Server listening on http://localhost:3000
-```
+| Code | Mnemonic | Subject Title | Credits | Subject Type | Allocated Faculty | Room |
+|---|---|---|:---:|---|---|---|
+| `34421109` | **CNS** | Cryptography and Network Security | 3 | Theory | HCL Trainer | TBC101 |
+| `35021C13` | **SE** | Software Engineering | 3 | Theory | Dr. N. Sarika | TBC101 |
+| `35021C12` | **PSP(T+P)** | Problem Solving Using Python Programming | 4 | Theory + Practical | Dr. R. Elankavi, Dr. R. Shobana | NEC LAB |
+| `35021P13` | **DL** | Deep Learning | 3 | Theory | HCL Trainer | TBC101 |
+| `35021C19` | **OS(T+P)** | Operating System Theory and Practical | 4 | Theory + Practical | Mrs. Gayathri, Dr. M. Rajesh | IOT LAB |
+| `34421002` | **IR** | Industrial Robotics | 3 | Theory | Mr. Saravanan | TBC101 |
+| `35021M81` | **MINI PRO** | Mini Project | 3 | Project | Dr. N. Sarika | INTEL LAB |
+| *—* | **SEM** | Seminar | 0 | Seminar | Dr. R. Elankavi | TBC101 |
+| *—* | **MENTOR** | Mentor | 0 | Mentoring | Respective Mentor | TBC101 |
+| `21SEMNR` | **CC/ECC** | Curricular/Extra-Curricular | 0 | Extra-Curricular | *Unassigned* | TBC101 |
 
-### Production Compilation & Deployment
-```powershell
-# Type check TypeScript codebase
-npx tsc --noEmit
+### Weekly Master Timetable (30 Periods / 6 Periods Daily)
 
-# Compile client bundle and bundle server with esbuild
-npm run build
+| Day | Period 1 | Period 2 | Period 3 | Period 4 | Period 5 | Period 6 |
+|---|---|---|---|---|---|---|
+| **Monday** | DL | CC/ECC | CC/ECC | PSP(T) | OS(T) | CNS |
+| **Tuesday** | DL | PSP(T) | OS(T) | CNS | MINI PRO | MINI PRO |
+| **Wednesday** | IR | OS(T) | OS(P) | PSP(P) | DL | SE |
+| **Thursday** | CNS | SE | IR | PSP(T) | IR | SEM |
+| **Friday** | PSP(P) | PSP(P) | MINI PRO | MINI PRO | SE | MENTOR |
 
-# Start production server
-npm start
-```
+*Statutory Breaks Preserved: Interval (10:40 AM – 10:50 AM), Lunch (11:50 AM – 12:30 PM), Afternoon Interval (2:25 PM – 2:35 PM).*
 
-### Environment Variables (`.env`)
-```env
-# Server Port (Default: 3000)
-PORT=3000
-```
+### Student & Parent Cohort Roster (Section VII-A)
+
+All 10 enrolled students and their corresponding legal parents/guardians are fully configured with authentic Indian naming, isolated parent-student relationship keys (`childStudentIds`), GPA scores, and academic fee ledger profiles.
+
+| # | Student Name | Reg Number | Student Login Email | Parent / Guardian | Parent Login Email | GPA | Fee Status |
+|---|---|---|---|---|---|:---:|:---:|
+| 1 | **Aarav Sharma** | `CS-2024-041` | `aarav.sharma@student.edutrack.edu` | **Raveendra Sharma** | `raveendra.sharma@gmail.com` | 3.82 | PAID |
+| 2 | **Diya Patel** | `CS-2024-042` | `diya.patel@student.edutrack.edu` | **Suresh Patel** | `suresh.patel@gmail.com` | 3.91 | PENDING |
+| 3 | **Rohan Iyer** | `CS-2024-043` | `rohan.iyer@student.edutrack.edu` | **Subramanian Iyer** | `subramanian.iyer@gmail.com` | 3.78 | OVERDUE |
+| 4 | **Ananya Deshmukh** | `CS-2024-044` | `ananya.deshmukh@student.edutrack.edu` | **Rajesh Deshmukh** | `rajesh.deshmukh@gmail.com` | 3.88 | PAID |
+| 5 | **Aditya Verma** | `CS-2024-045` | `aditya.verma@student.edutrack.edu` | **Manoj Verma** | `manoj.verma@gmail.com` | 3.65 | PAID |
+| 6 | **Pooja Sundaram** | `CS-2024-046` | `pooja.sundaram@student.edutrack.edu` | **Gopal Sundaram** | `gopal.sundaram@gmail.com` | 3.95 | PAID |
+| 7 | **Karthik Raman** | `CS-2024-047` | `karthik.raman@student.edutrack.edu` | **Venkatesh Raman** | `venkatesh.raman@gmail.com` | 3.72 | PENDING |
+| 8 | **Sneha Kulkarni** | `CS-2024-048` | `sneha.kulkarni@student.edutrack.edu` | **Anand Kulkarni** | `anand.kulkarni@gmail.com` | 3.84 | PAID |
+| 9 | **Vikram Choudhury** | `CS-2024-049` | `vikram.choudhury@student.edutrack.edu` | **Debashis Choudhury** | `debashis.choudhury@gmail.com` | 3.59 | OVERDUE |
+| 10 | **Meera Nair** | `CS-2024-050` | `meera.nair@student.edutrack.edu` | **Balachandran Nair** | `balachandran.nair@gmail.com` | 3.92 | PAID |
+
+*All student and parent accounts use the default demonstration security credentials (`password123`).*
+

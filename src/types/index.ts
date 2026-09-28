@@ -23,6 +23,11 @@ export interface AcademicClass {
   classTeacherId: string;
   classTeacherName: string;
   classTeacherEmail: string;
+  facultyAdvisorId?: string;
+  facultyAdvisorName?: string;
+  effectiveFrom?: string;
+  program?: string;
+  semesterType?: 'ODD' | 'EVEN';
 }
 
 export interface RegistrationRequest {
@@ -83,18 +88,45 @@ export interface User {
   gpa?: number;
   semester?: number;
   createdAt?: string;
+  designation?: string;
+  academicYear?: string;
+  isFacultyAdvisor?: boolean;
+}
+
+export interface CourseFacultyAssignment {
+  facultyId: string;
+  facultyName: string;
+  role?: 'PRIMARY' | 'CO_FACULTY' | 'LAB_FACULTY' | 'MENTOR';
+}
+
+export type SubjectType = 'Theory' | 'Theory + Practical' | 'Project' | 'Mentoring' | 'Seminar' | 'Extra-Curricular';
+
+export interface TimetableSlot {
+  id: string;
+  day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday';
+  period: number;
+  courseMnemonic: string;
+  courseCode?: string;
+  courseTitle: string;
+  room: string;
+  facultyNames: string[];
 }
 
 export interface Course {
   id: string;
-  code: string;
+  code?: string;
+  mnemonic?: string;
   title: string;
   description: string;
   department: string;
   credits: number;
   semester: number;
+  academicYear?: string;
+  section?: string;
+  subjectType?: SubjectType;
   facultyId: string;
   facultyName: string;
+  coFaculties?: CourseFacultyAssignment[];
   enrolledStudentsCount: number;
   maxCapacity: number;
   schedule?: string;
@@ -276,10 +308,3 @@ export interface ParentReview {
   createdAt: string;
 }
 
-export interface ChildStudentMetrics extends User {
-  attendancePercentage: number;
-  attendanceRecords: AttendanceRecord[];
-  submissions: Submission[];
-  quizAttempts: QuizAttempt[];
-  averageAssignmentScore: number;
-}

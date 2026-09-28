@@ -240,6 +240,8 @@ CREATE TABLE attendance (
 );
 
 CREATE INDEX idx_att_course_date ON attendance(course_id, attendance_date);
+CREATE INDEX idx_att_student_date ON attendance(student_id, attendance_date);
+CREATE INDEX idx_att_student_course ON attendance(student_id, course_id, attendance_date);
 
 -- 15. AUDIT LOGS TABLE
 CREATE TABLE audit_logs (

@@ -16,7 +16,8 @@ import {
   mockParentReviews,
   mockAcademicClasses,
   mockRegistrationRequests,
-  mockFeeRecords
+  mockFeeRecords,
+  mockTimetableSlots
 } from './src/data/mockData';
 
 const app = express();
@@ -39,6 +40,17 @@ let parentReviewsStore = [...mockParentReviews];
 let classesStore = [...mockAcademicClasses];
 let registrationRequestsStore = [...mockRegistrationRequests];
 let feeStore = [...mockFeeRecords];
+let timetableStore = [...mockTimetableSlots];
+
+// Helper to verify if faculty teaches a course
+function isFacultyAssignedToCourse(course: any, facultyId: string): boolean {
+  if (!course || !facultyId) return false;
+  if (course.facultyId === facultyId) return true;
+  if (course.coFaculties && Array.isArray(course.coFaculties)) {
+    return course.coFaculties.some((cf: any) => cf.facultyId === facultyId);
+  }
+  return false;
+}
 
 // Helper to append audit log
 function addAuditLog(performedBy: string, role: any, action: string, details: string) {
@@ -605,7 +617,7 @@ app.post('/api/materials', (req: Request, res: Response) => {
     return res.status(404).json({ error: 'Target course not found' });
   }
 
-  if (userRole === 'FACULTY' && facultyId && targetCourse.facultyId && targetCourse.facultyId !== facultyId) {
+  if (userRole === 'FACULTY' && facultyId && !isFacultyAssignedToCourse(targetCourse, facultyId)) {
     return res.status(403).json({ error: 'Forbidden: You are not assigned to instruct this course' });
   }
 
@@ -672,7 +684,7 @@ app.put('/api/materials/:id', (req: Request, res: Response) => {
 
   // Authorization check
   const targetCourse = coursesStore.find((c) => c.id === existing.courseId);
-  if (userRole === 'FACULTY' && facultyId && targetCourse && targetCourse.facultyId !== facultyId) {
+  if (userRole === 'FACULTY' && facultyId && targetCourse && !isFacultyAssignedToCourse(targetCourse, facultyId)) {
     return res.status(403).json({ error: 'Forbidden: You are not assigned to instruct this course' });
   }
 
@@ -697,6 +709,12 @@ app.get('/api/assignments', (req: Request, res: Response) => {
 });
 
 app.post('/api/assignments', (req: Request, res: Response) => {
+  const { courseId, facultyId, userRole, performedBy } = req.body;
+  const targetCourse = coursesStore.find((c) => c.id === courseId);
+  if (userRole === 'FACULTY' && facultyId && targetCourse && !isFacultyAssignedToCourse(targetCourse, facultyId)) {
+    return res.status(403).json({ error: 'Forbidden: You are not assigned to instruct this course' });
+  }
+
   const newAssignment = { id: `asg-${Date.now()}`, createdAt: new Date().toISOString().split('T')[0], ...req.body };
   assignmentsStore.push(newAssignment);
   
@@ -721,7 +739,7 @@ app.put('/api/assignments/:id', (req: Request, res: Response) => {
   const existing = assignmentsStore[index];
   const { performedBy, userRole, facultyId } = req.body;
   const targetCourse = coursesStore.find((c) => c.id === existing.courseId);
-  if (userRole === 'FACULTY' && facultyId && targetCourse && targetCourse.facultyId !== facultyId) {
+  if (userRole === 'FACULTY' && facultyId && targetCourse && !isFacultyAssignedToCourse(targetCourse, facultyId)) {
     return res.status(403).json({ error: 'Forbidden: You are not assigned to this course' });
   }
 
@@ -876,7 +894,7 @@ app.post('/api/quizzes', (req: Request, res: Response) => {
   const targetCourse = coursesStore.find((c) => c.id === courseId);
   if (!targetCourse) return res.status(404).json({ error: 'Target course not found' });
 
-  if (userRole === 'FACULTY' && facultyId && targetCourse.facultyId !== facultyId) {
+  if (userRole === 'FACULTY' && facultyId && !isFacultyAssignedToCourse(targetCourse, facultyId)) {
     return res.status(403).json({ error: 'Forbidden: You are not assigned to this course' });
   }
 
@@ -901,7 +919,7 @@ app.post('/api/quizzes', (req: Request, res: Response) => {
     });
   }
 
-  addAuditLog(performedBy || 'Faculty', userRole || 'FACULTY', 'QUIZ_CREATE', `Created quiz "${newQuiz.title}" for ${targetCourse.code}`);
+  addAuditLog(performedBy || 'Faculty', userRole || 'FACULTY', 'QUIZ_CREATE', `Created quiz "${newQuiz.title}" for ${targetCourse.code || targetCourse.mnemonic}`);
 
   res.status(201).json(newQuiz);
 });
@@ -913,7 +931,7 @@ app.put('/api/quizzes/:id', (req: Request, res: Response) => {
   const existing = quizzesStore[index];
   const { performedBy, userRole, facultyId } = req.body;
   const targetCourse = coursesStore.find((c) => c.id === existing.courseId);
-  if (userRole === 'FACULTY' && facultyId && targetCourse && targetCourse.facultyId !== facultyId) {
+  if (userRole === 'FACULTY' && facultyId && targetCourse && !isFacultyAssignedToCourse(targetCourse, facultyId)) {
     return res.status(403).json({ error: 'Forbidden: You are not assigned to this course' });
   }
 
@@ -977,12 +995,140 @@ app.get('/api/quiz-attempts', (req: Request, res: Response) => {
 
 // Attendance API
 app.get('/api/attendance', (req: Request, res: Response) => {
-  const { courseId, studentId, date } = req.query;
+  const { courseId, studentId, date, requesterRole, requesterId } = req.query;
+  
+  // Security enforcement: If student requests, can only access own attendance
+  if (requesterRole === 'STUDENT' && requesterId && studentId && requesterId !== studentId) {
+    return res.status(403).json({ error: 'Forbidden: Students are strictly restricted to their own attendance records.' });
+  }
+
+  // Security enforcement: If parent requests, can only access authorized child
+  if (requesterRole === 'PARENT' && requesterId && studentId) {
+    const parent = usersStore.find((u) => u.id === requesterId);
+    if (!parent || !parent.childStudentIds?.includes(studentId as string)) {
+      return res.status(403).json({ error: 'Forbidden: Parents are strictly restricted to their authorized children.' });
+    }
+  }
+
   let results = [...attendanceStore];
   if (courseId) results = results.filter((a) => a.courseId === courseId);
   if (studentId) results = results.filter((a) => a.studentId === studentId);
   if (date) results = results.filter((a) => a.date === date);
+
+  // Sort newest first
+  results.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   res.json(results);
+});
+
+// Student attendance summary & analytics endpoint (Single source of truth)
+app.get('/api/attendance/summary/:studentId', (req: Request, res: Response) => {
+  const { studentId } = req.params;
+  const { requesterId, requesterRole } = req.query;
+
+  // Authorization validation
+  if (requesterRole === 'STUDENT' && requesterId && requesterId !== studentId) {
+    return res.status(403).json({ error: 'Forbidden: You cannot access another student\'s attendance summary.' });
+  }
+
+  if (requesterRole === 'PARENT' && requesterId) {
+    const parent = usersStore.find((u) => u.id === requesterId);
+    if (!parent || !parent.childStudentIds?.includes(studentId)) {
+      return res.status(403).json({ error: 'Forbidden: Student is not an authorized ward of this parent account.' });
+    }
+  }
+
+  const student = usersStore.find((u) => u.id === studentId);
+  if (!student) return res.status(404).json({ error: 'Student record not found' });
+
+  // Get enrolled courses and records
+  const studentRecords = attendanceStore.filter((a) => a.studentId === studentId);
+  const enrolledCourses = coursesStore.filter((c) => student.classId ? true : true); // courses available in curriculum
+
+  const totalSessions = studentRecords.length;
+  const presentCount = studentRecords.filter((a) => a.status === 'PRESENT').length;
+  const lateCount = studentRecords.filter((a) => a.status === 'LATE').length;
+  const absentCount = studentRecords.filter((a) => a.status === 'ABSENT').length;
+  const overallPercentage = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 100;
+  const isCompliant = overallPercentage >= 75;
+
+  // Subject-wise breakdown
+  const subjectMetrics = enrolledCourses.map((crs) => {
+    const cRecords = studentRecords.filter((r) => r.courseId === crs.id);
+    const cTotal = cRecords.length;
+    const cPresent = cRecords.filter((r) => r.status === 'PRESENT').length;
+    const cLate = cRecords.filter((r) => r.status === 'LATE').length;
+    const cAbsent = cRecords.filter((r) => r.status === 'ABSENT').length;
+    const cPct = cTotal > 0 ? Math.round((cPresent / cTotal) * 100) : 100;
+    const cCompliant = cPct >= 75;
+    const needed = (!cCompliant && cTotal > 0) ? Math.max(1, Math.ceil(3 * cTotal - 4 * cPresent)) : 0;
+
+    return {
+      courseId: crs.id,
+      courseCode: crs.code,
+      courseName: crs.title,
+      facultyName: crs.facultyName,
+      present: cPresent,
+      late: cLate,
+      absent: cAbsent,
+      total: cTotal,
+      percentage: cPct,
+      status: cCompliant ? 'COMPLIANT' : 'WARNING',
+      shortageCount: needed
+    };
+  });
+
+  const recent = [...studentRecords]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 8);
+
+  res.json({
+    studentId,
+    studentName: student.name,
+    regNumber: student.regNumber,
+    overall: {
+      percentage: overallPercentage,
+      present: presentCount,
+      late: lateCount,
+      absent: absentCount,
+      total: totalSessions,
+      threshold: 75,
+      status: isCompliant ? 'COMPLIANT' : 'WARNING',
+      shortageCount: (!isCompliant && totalSessions > 0) ? Math.max(1, Math.ceil(3 * totalSessions - 4 * presentCount)) : 0
+    },
+    subjects: subjectMetrics,
+    recent
+  });
+});
+
+// Timetable Endpoints
+app.get('/api/timetable', (req: Request, res: Response) => {
+  res.json(timetableStore);
+});
+
+// Single attendance record correction (Faculty/Admin only)
+app.put('/api/attendance/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { status, performedBy, userRole, reason } = req.body;
+
+  if (userRole !== 'FACULTY' && userRole !== 'ADMIN') {
+    return res.status(403).json({ error: 'Forbidden: Only faculty instructors and administrators may correct attendance.' });
+  }
+
+  const index = attendanceStore.findIndex((a) => a.id === id);
+  if (index === -1) return res.status(404).json({ error: 'Attendance record not found' });
+
+  const prev = attendanceStore[index];
+  const oldStatus = prev.status;
+  attendanceStore[index] = { ...prev, status };
+
+  addAuditLog(
+    performedBy || 'Faculty',
+    userRole || 'FACULTY',
+    'ATTENDANCE_CORRECTED',
+    `Corrected attendance for student ${prev.studentName} on ${prev.date} in ${prev.courseCode || prev.courseId}: ${oldStatus} -> ${status}${reason ? ` (Reason: ${reason})` : ''}`
+  );
+
+  res.json({ success: true, updated: attendanceStore[index] });
 });
 
 app.post('/api/attendance', (req: Request, res: Response) => {
@@ -1012,7 +1158,7 @@ app.post('/api/courses/:courseId/attendance/bulk', (req: Request, res: Response)
   const targetCourse = coursesStore.find((c) => c.id === courseId);
   if (!targetCourse) return res.status(404).json({ error: 'Course not found' });
 
-  if (userRole === 'FACULTY' && facultyId && targetCourse.facultyId !== facultyId) {
+  if (userRole === 'FACULTY' && facultyId && !isFacultyAssignedToCourse(targetCourse, facultyId)) {
     return res.status(403).json({ error: 'Forbidden: You are not assigned to instruct this course' });
   }
 
@@ -1024,7 +1170,11 @@ app.post('/api/courses/:courseId/attendance/bulk', (req: Request, res: Response)
   records.forEach((rec: any) => {
     const existing = attendanceStore.findIndex((a) => a.courseId === courseId && a.studentId === rec.studentId && a.date === date);
     if (existing !== -1) {
+      const oldStatus = attendanceStore[existing].status;
       attendanceStore[existing].status = rec.status;
+      if (oldStatus !== rec.status) {
+        addAuditLog(performedBy || 'Faculty', 'FACULTY', 'ATTENDANCE_CORRECTED', `Updated attendance for ${rec.studentName} in ${targetCourse.code} on ${date}: ${oldStatus} -> ${rec.status}`);
+      }
     } else {
       attendanceStore.push({
         id: `att-${Date.now()}-${Math.floor(Math.random() * 10000)}`,

@@ -72,7 +72,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onCreateInvoice
 }) => {
   const [filterRole, setFilterRole] = useState<string>('ALL');
-  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'REGISTRATIONS' | 'USERS' | 'BILLING'>('OVERVIEW');
+  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'COURSES' | 'REGISTRATIONS' | 'USERS' | 'BILLING'>('OVERVIEW');
 
   // Edit User Modal state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -213,6 +213,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-800 text-xs">
         {[
           { id: 'OVERVIEW', label: 'Administration Overview', icon: ShieldAlert },
+          { id: 'COURSES', label: 'Academic Management (Subjects)', icon: BookOpen, badge: courses.length },
           { id: 'REGISTRATIONS', label: 'Registration Clearances', icon: School, badge: pendingAdminRequests.length },
           { id: 'USERS', label: 'User Accounts Directory', icon: Users, badge: users.length },
           { id: 'BILLING', label: 'Institutional Billing & Fee Alerts', icon: Receipt, badge: fees.filter((f) => f.status === 'OVERDUE' || f.status === 'PENDING').length }
@@ -333,11 +334,106 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <BillingAlertManager
           students={users.filter((u) => u.role === 'STUDENT')}
           fees={fees}
-          onSendReminder={onSendFeeReminder}
+          senderName="University Administration"
+          senderRole="ADMIN"
+          onSendReminder={(feeId, msg) => {
+            if (onSendFeeReminder) {
+              onSendFeeReminder(feeId, msg);
+            }
+          }}
           onCreateInvoice={onCreateInvoice}
-          canCreateInvoice={true}
-          currentRole="ADMIN"
+          academicClasses={academicClasses}
         />
+      )}
+
+      {/* Academic Management (Subjects / Courses) Tab */}
+      {adminTab === 'COURSES' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="p-5 rounded-2xl glass-panel border border-indigo-500/30 bg-indigo-950/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+                <BookOpen className="w-4 h-4" />
+                <span>Academic Management • Curricular Registry</span>
+              </div>
+              <h2 className="text-base font-bold text-white mt-1">
+                Official Subject Configuration (Academic Year: 2026–2027)
+              </h2>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Semester IV (ODD) • Section VII / VII-A • Department of CSE • Faculty Advisor: Dr. R. Elankavi
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 font-mono text-slate-300">
+                {courses.length} Configured Subjects
+              </span>
+            </div>
+          </div>
+
+          {/* Official Course Registry Table */}
+          <div className="p-5 rounded-2xl glass-panel space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-amber-400" />
+                <span>Prescribed Course Roster & Faculty Allocation</span>
+              </h3>
+              <span className="text-xs text-slate-400">Timetable Authoritative Source</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider bg-slate-900/60">
+                    <th className="py-3 px-3">Code</th>
+                    <th className="py-3 px-3">Mnemonic</th>
+                    <th className="py-3 px-4">Subject Title</th>
+                    <th className="py-3 px-3 text-center">Credits</th>
+                    <th className="py-3 px-3">Subject Type</th>
+                    <th className="py-3 px-4">Allocated Faculty</th>
+                    <th className="py-3 px-3">Room</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {courses.map((c) => (
+                    <tr key={c.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="py-3 px-3 font-mono text-indigo-400 font-bold whitespace-nowrap">
+                        {c.code || '—'}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20 whitespace-nowrap">
+                          {c.mnemonic || '—'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 font-semibold text-white">
+                        {c.title}
+                      </td>
+                      <td className="py-3 px-3 text-center font-bold text-slate-300">
+                        {c.credits}
+                      </td>
+                      <td className="py-3 px-3 text-slate-400 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded bg-slate-800/80 text-slate-300 text-[11px]">
+                          {c.subjectType || 'Theory'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-slate-300">
+                        <div className="font-medium text-white">{c.facultyName || '—'}</div>
+                        {c.coFaculties && c.coFaculties.length > 0 && (
+                          <div className="text-[10px] text-indigo-300 font-normal">
+                            Co-Faculty: {c.coFaculties.map((cf) => cf.facultyName).join(', ')}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 font-mono text-slate-300 whitespace-nowrap">
+                        <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-[11px]">
+                          {c.room || 'TBC101'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Two-Stage Registration Approval Queue for Admin */}

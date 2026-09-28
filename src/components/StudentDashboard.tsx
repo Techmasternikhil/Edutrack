@@ -12,8 +12,10 @@ import {
   PaymentMethod
 } from '../types';
 import { APP_CONFIG } from '../config/constants';
+import { calculateAttendanceMetrics } from '../utils/academic';
 import { YouTubeVideoPlayer } from './faculty/YouTubeVideoPlayer';
 import { StudentBillingSection } from './student/StudentBillingSection';
+import { StudentAttendanceSection } from './student/StudentAttendanceSection';
 import {
   GraduationCap,
   Award,
@@ -101,10 +103,9 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   const mySubmissions = submissions.filter((s) => s.studentId === currentStudent.id);
   const myAttendance = attendance.filter((a) => a.studentId === currentStudent.id);
   const myQuizAttempts = quizAttempts.filter((q) => q.studentId === currentStudent.id);
-  const presentCount = myAttendance.filter((a) => a.status === 'PRESENT').length;
-  const attendanceRate = myAttendance.length > 0 ? Math.round((presentCount / myAttendance.length) * 100) : 100;
-
-  const isAttendanceBelowThreshold = attendanceRate < APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD;
+  const attendanceMetrics = calculateAttendanceMetrics(myAttendance);
+  const { presentCount, attendanceRate } = attendanceMetrics;
+  const isAttendanceBelowThreshold = !attendanceMetrics.isCompliant;
 
   const myFees = fees.filter((f) => f.studentId === currentStudent.id);
   const myPendingFeesCount = myFees.filter((f) => f.status === 'PENDING' || f.status === 'OVERDUE').length;
@@ -152,8 +153,11 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         <h1 className="text-xl md:text-2xl font-bold text-white mt-1">
           Welcome back, {currentStudent.name}
         </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          Registration: <span className="text-slate-300 font-mono">{currentStudent.regNumber}</span> • Department of Computer Science • Semester {currentStudent.semester}
+        <p className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-2">
+          <span>Registration: <strong className="text-slate-300 font-mono">{currentStudent.regNumber}</strong></span>
+          <span>• Department of {currentStudent.department || 'CSE'}</span>
+          <span>• Semester IV (Section VII / VII-A)</span>
+          <span>• AY 2026–2027</span>
         </p>
       </div>
 
@@ -189,9 +193,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           </div>
         </div>
 
-        <div className="p-4 rounded-xl glass-card flex items-center justify-between">
+        <div
+          onClick={() => setActiveTab('ATTENDANCE')}
+          className="p-4 rounded-xl glass-card flex items-center justify-between cursor-pointer hover:border-indigo-500/50 transition-all group"
+        >
           <div>
-            <div className="text-xs text-slate-400 font-medium">Attendance Record</div>
+            <div className="text-xs text-slate-400 font-medium group-hover:text-indigo-300 transition-colors">
+              Attendance Record (Click to View)
+            </div>
             <div
               className={`text-2xl font-black mt-1 ${
                 isAttendanceBelowThreshold ? 'text-rose-400' : 'text-indigo-400'
@@ -203,7 +212,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
               {presentCount} / {myAttendance.length} classes attended
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
             <CalendarCheck className="w-5 h-5 text-indigo-400" />
           </div>
         </div>
@@ -237,6 +246,8 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-slate-800 text-xs">
         {[
           { id: 'ALL', label: 'All Learning Activity', icon: BookOpen },
+          { id: 'SUBJECTS', label: 'My Subjects', icon: GraduationCap, badge: courses.length },
+          { id: 'ATTENDANCE', label: 'My Attendance', icon: CalendarCheck, badge: !attendanceMetrics.isCompliant ? 1 : undefined },
           { id: 'VIDEOS', label: 'Teaching Videos', icon: Video, badge: studentVideos.length },
           { id: 'MATERIALS', label: 'Study Materials & Slides', icon: FileText, badge: studentDocs.length },
           { id: 'ASSIGNMENTS', label: 'Assignments', icon: FileCheck2 },
@@ -270,6 +281,127 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           );
         })}
       </div>
+
+      {/* My Subjects Section */}
+      {activeTab === 'SUBJECTS' && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="p-5 rounded-2xl glass-panel border border-emerald-500/20 bg-emerald-950/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-semibold uppercase tracking-wider">
+                <GraduationCap className="w-4 h-4" />
+                <span>Enrolled Curriculum • Academic Year 2026–2027</span>
+              </div>
+              <h2 className="text-base font-bold text-white mt-1">
+                Semester IV • Section VII / VII-A • Department of CSE
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Faculty Advisor: <span className="text-amber-300 font-semibold">Dr. R. Elankavi</span> • Effective From: 01-07-2026
+              </p>
+            </div>
+            <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 self-start md:self-auto">
+              {courses.length} Prescribed Subjects
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course) => {
+              const courseAttendance = attendance.filter((a) => a.studentId === currentStudent.id && (a.courseId === course.id || a.courseCode === course.code));
+              const coursePresent = courseAttendance.filter((a) => a.status === 'PRESENT').length;
+              const courseRate = courseAttendance.length > 0 ? Math.round((coursePresent / courseAttendance.length) * 100) : 100;
+              const courseVids = studentVideos.filter((v) => v.courseId === course.id);
+              const courseMaterialsCount = studentDocs.filter((m) => m.courseId === course.id).length;
+              const courseQzCount = studentQuizzes.filter((q) => q.courseId === course.id || q.courseCode === course.code).length;
+              const courseAsgCount = assignments.filter((a) => a.courseId === course.id || a.courseCode === course.code).length;
+
+              return (
+                <div
+                  key={course.id}
+                  className="p-5 rounded-2xl glass-panel border border-slate-700/70 hover:border-emerald-500/40 transition-all flex flex-col justify-between space-y-4 shadow-lg group"
+                >
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {course.mnemonic && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-black text-xs border border-amber-500/20">
+                            {course.mnemonic}
+                          </span>
+                        )}
+                        {course.code && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-mono text-xs font-bold border border-indigo-500/20">
+                            {course.code}
+                          </span>
+                        )}
+                        {course.subjectType && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                            {course.subjectType}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs font-bold text-slate-300">{course.credits} Credits</span>
+                    </div>
+
+                    <h3 className="text-sm font-bold text-white group-hover:text-emerald-300 transition-colors">
+                      {course.title}
+                    </h3>
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                      {course.description}
+                    </p>
+
+                    <div className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs space-y-1">
+                      <div className="text-slate-300">
+                        <span className="text-slate-500 text-[11px]">Faculty: </span>
+                        <strong className="text-white">{course.facultyName || 'Respective Mentor / Unassigned'}</strong>
+                        {course.coFaculties && course.coFaculties.length > 0 && (
+                          <span className="text-slate-300">, {course.coFaculties.map((cf) => cf.facultyName).join(', ')}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono pt-0.5">
+                        <span>Room: <strong className="text-slate-200">{course.room || 'TBC101'}</strong></span>
+                        {courseAttendance.length > 0 && (
+                          <span className={courseRate < 75 ? 'text-rose-400 font-bold' : 'text-emerald-400 font-bold'}>
+                            Att: {courseRate}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-800/80 grid grid-cols-4 gap-1 text-center text-[10px] text-slate-400">
+                    <div className="p-1.5 rounded-lg bg-slate-800/40">
+                      <div className="font-bold text-rose-400">{courseVids.length}</div>
+                      <div>Videos</div>
+                    </div>
+                    <div className="p-1.5 rounded-lg bg-slate-800/40">
+                      <div className="font-bold text-indigo-400">{courseMaterialsCount}</div>
+                      <div>Notes</div>
+                    </div>
+                    <div className="p-1.5 rounded-lg bg-slate-800/40">
+                      <div className="font-bold text-purple-400">{courseQzCount}</div>
+                      <div>Quizzes</div>
+                    </div>
+                    <div className="p-1.5 rounded-lg bg-slate-800/40">
+                      <div className="font-bold text-amber-400">{courseAsgCount}</div>
+                      <div>Tasks</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* My Attendance Section */}
+      {activeTab === 'ATTENDANCE' && (
+        <StudentAttendanceSection
+          studentId={currentStudent.id}
+          studentName={currentStudent.name}
+          regNumber={currentStudent.regNumber}
+          courses={courses}
+          attendanceRecords={attendance}
+          isParentView={false}
+        />
+      )}
 
       {/* Fees & Billing Section */}
       {activeTab === 'BILLING' && (

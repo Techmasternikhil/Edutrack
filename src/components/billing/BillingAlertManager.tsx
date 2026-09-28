@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FeeRecord, User, AcademicClass } from '../../types';
+import { formatINR, getFeeStatusBadgeClass } from '../../utils/academic';
 import {
   Receipt,
   Bell,
@@ -112,19 +113,19 @@ export const BillingAlertManager: React.FC<BillingAlertManagerProps> = ({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl glass-card bg-slate-900/60 border border-slate-800">
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Invoiced</span>
-          <div className="text-xl sm:text-2xl font-black text-white mt-1">₹{totalInvoiced.toLocaleString('en-IN')}</div>
+          <div className="text-xl sm:text-2xl font-black text-white mt-1">{formatINR(totalInvoiced)}</div>
           <span className="text-[10px] text-slate-500">{fees.length} Total Issued Records</span>
         </div>
 
         <div className="p-4 rounded-2xl glass-card bg-emerald-950/20 border border-emerald-500/20">
           <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Collections Verified</span>
-          <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">₹{totalCollected.toLocaleString('en-IN')}</div>
+          <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">{formatINR(totalCollected)}</div>
           <span className="text-[10px] text-emerald-500/80">Cleared into account</span>
         </div>
 
         <div className="p-4 rounded-2xl glass-card bg-amber-950/20 border border-amber-500/20">
           <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">Pending Institutional Dues</span>
-          <div className="text-xl sm:text-2xl font-black text-amber-400 mt-1">₹{totalPendingDues.toLocaleString('en-IN')}</div>
+          <div className="text-xl sm:text-2xl font-black text-amber-400 mt-1">{formatINR(totalPendingDues)}</div>
           <span className="text-[10px] text-amber-500/80">Awaiting clearance</span>
         </div>
 
@@ -220,13 +221,7 @@ export const BillingAlertManager: React.FC<BillingAlertManagerProps> = ({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-bold text-white">{fee.title}</span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                        fee.status === 'PAID'
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                          : fee.status === 'OVERDUE'
-                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                      }`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getFeeStatusBadgeClass(fee.status)}`}
                     >
                       {fee.status}
                     </span>
@@ -253,7 +248,7 @@ export const BillingAlertManager: React.FC<BillingAlertManagerProps> = ({
 
                 <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 border-t md:border-t-0 pt-2 md:pt-0 border-slate-800">
                   <div className="text-right">
-                    <div className="text-base font-black text-white">₹{fee.amount.toLocaleString('en-IN')}</div>
+                    <div className="text-base font-black text-white">{formatINR(fee.amount)}</div>
                     <div className="text-[10px] text-slate-400">{fee.status === 'PAID' ? 'Amount Cleared' : 'Outstanding'}</div>
                   </div>
 

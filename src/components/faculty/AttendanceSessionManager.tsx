@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Course, User, AttendanceRecord, AttendanceStatus } from '../../types';
 import { APP_CONFIG } from '../../config/constants';
+import { calculateAttendanceMetrics } from '../../utils/academic';
 import {
   CalendarCheck,
   CheckCircle2,
@@ -85,28 +86,20 @@ export const AttendanceSessionManager: React.FC<AttendanceSessionManagerProps> =
   // Calculate analytics for this course across all dates
   const courseRecords = existingRecords.filter((a) => a.courseId === course.id);
   const totalClassesRecorded = new Set(courseRecords.map((a) => a.date)).size;
-  const presentCount = courseRecords.filter((a) => a.status === 'PRESENT').length;
-  const absentCount = courseRecords.filter((a) => a.status === 'ABSENT').length;
-  const lateCount = courseRecords.filter((a) => a.status === 'LATE').length;
-  const totalStudentMarks = courseRecords.length;
-  const overallAttendancePct = totalStudentMarks > 0
-    ? Math.round((presentCount / totalStudentMarks) * 100)
-    : 100;
+  const courseMetrics = calculateAttendanceMetrics(courseRecords);
+  const { presentCount, absentCount, lateCount, attendanceRate: overallAttendancePct } = courseMetrics;
 
   // Student specific statistics
   const studentMetrics = enrolledStudents.map((student) => {
     const recs = courseRecords.filter((r) => r.studentId === student.id);
-    const sPresent = recs.filter((r) => r.status === 'PRESENT').length;
-    const sAbsent = recs.filter((r) => r.status === 'ABSENT').length;
-    const sLate = recs.filter((r) => r.status === 'LATE').length;
-    const pct = recs.length > 0 ? Math.round((sPresent / recs.length) * 100) : 100;
+    const m = calculateAttendanceMetrics(recs);
     return {
       student,
-      present: sPresent,
-      absent: sAbsent,
-      late: sLate,
-      percentage: pct,
-      isBelowThreshold: pct < APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD
+      present: m.presentCount,
+      absent: m.absentCount,
+      late: m.lateCount,
+      percentage: m.attendanceRate,
+      isBelowThreshold: !m.isCompliant
     };
   });
 

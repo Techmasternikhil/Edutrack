@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FeeRecord, PaymentMethod } from '../../types';
+import { formatINR, getFeeStatusBadgeClass } from '../../utils/academic';
 import {
   CreditCard,
   CheckCircle2,
@@ -81,22 +82,23 @@ export const StudentBillingSection: React.FC<StudentBillingSectionProps> = ({
   };
 
   const getStatusBadge = (status: FeeRecord['status']) => {
+    const badgeClass = getFeeStatusBadgeClass(status);
     switch (status) {
       case 'PAID':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}`}>
             <CheckCircle2 className="w-3 h-3" /> PAID
           </span>
         );
       case 'OVERDUE':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 animate-pulse">
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border animate-pulse ${badgeClass}`}>
             <AlertTriangle className="w-3 h-3" /> OVERDUE
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badgeClass}`}>
             <Clock className="w-3 h-3" /> PENDING
           </span>
         );
@@ -110,7 +112,7 @@ export const StudentBillingSection: React.FC<StudentBillingSectionProps> = ({
         <div className="p-4 rounded-2xl glass-card bg-slate-900/60 border border-slate-800">
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Invoiced</span>
           <div className="text-xl sm:text-2xl font-black text-white mt-1">
-            ₹{totalInvoiced.toLocaleString('en-IN')}
+            {formatINR(totalInvoiced)}
           </div>
           <span className="text-[10px] text-slate-500">All semester billings</span>
         </div>
@@ -118,7 +120,7 @@ export const StudentBillingSection: React.FC<StudentBillingSectionProps> = ({
         <div className="p-4 rounded-2xl glass-card bg-emerald-950/20 border border-emerald-500/20">
           <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Dues Cleared</span>
           <div className="text-xl sm:text-2xl font-black text-emerald-400 mt-1">
-            ₹{totalPaid.toLocaleString('en-IN')}
+            {formatINR(totalPaid)}
           </div>
           <span className="text-[10px] text-emerald-500/80">Paid & verified</span>
         </div>
@@ -126,7 +128,7 @@ export const StudentBillingSection: React.FC<StudentBillingSectionProps> = ({
         <div className="p-4 rounded-2xl glass-card bg-amber-950/20 border border-amber-500/20">
           <span className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">Pending Dues</span>
           <div className="text-xl sm:text-2xl font-black text-amber-400 mt-1">
-            ₹{totalPending.toLocaleString('en-IN')}
+            {formatINR(totalPending)}
           </div>
           <span className="text-[10px] text-amber-500/80">Upcoming clearance</span>
         </div>
@@ -134,7 +136,7 @@ export const StudentBillingSection: React.FC<StudentBillingSectionProps> = ({
         <div className="p-4 rounded-2xl glass-card bg-rose-950/20 border border-rose-500/20">
           <span className="text-[11px] font-semibold text-rose-400 uppercase tracking-wider">Overdue Dues</span>
           <div className="text-xl sm:text-2xl font-black text-rose-400 mt-1">
-            ₹{totalOverdue.toLocaleString('en-IN')}
+            {formatINR(totalOverdue)}
           </div>
           <span className="text-[10px] text-rose-500/80">Action required immediately</span>
         </div>

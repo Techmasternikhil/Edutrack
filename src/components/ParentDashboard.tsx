@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, Course, Submission, QuizAttempt, AttendanceRecord, ParentReview, FeeRecord, PaymentMethod } from '../types';
 import { StudentBillingSection } from './student/StudentBillingSection';
+import { StudentAttendanceSection } from './student/StudentAttendanceSection';
 import {
   Users,
   Award,
@@ -16,9 +17,11 @@ import {
   BookOpen,
   HeartHandshake,
   Receipt,
-  CreditCard
+  CreditCard,
+  MessageSquareQuote
 } from 'lucide-react';
 import { APP_CONFIG } from '../config/constants';
+import { calculateAttendanceMetrics } from '../utils/academic';
 import {
   ResponsiveContainer,
   BarChart,
@@ -75,7 +78,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
   const selectedStudent = linkedChildren.find((c) => c.id === selectedStudentId) || linkedChildren[0];
 
   // Forms state for Parent Review / Inquiry
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'BILLING' | 'REMARKS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ATTENDANCE' | 'BILLING' | 'REMARKS'>('OVERVIEW');
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewMessage, setReviewMessage] = useState('');
   const [reviewCategory, setReviewCategory] = useState<ParentReview['category']>('GENERAL');
@@ -84,12 +87,8 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
 
   // Student specific data
   const studentAttendance = attendance.filter((a) => a.studentId === selectedStudent?.id);
-  const presentCount = studentAttendance.filter((a) => a.status === 'PRESENT').length;
-  const absentCount = studentAttendance.filter((a) => a.status === 'ABSENT').length;
-  const lateCount = studentAttendance.filter((a) => a.status === 'LATE').length;
-  const attendanceRate = studentAttendance.length > 0
-    ? Math.round((presentCount / studentAttendance.length) * 100)
-    : 100;
+  const attendanceMetrics = calculateAttendanceMetrics(studentAttendance);
+  const { presentCount, lateCount, absentCount, attendanceRate } = attendanceMetrics;
 
   const studentSubmissions = submissions.filter((s) => s.studentId === selectedStudent?.id);
   const studentQuizAttempts = quizAttempts.filter((q) => q.studentId === selectedStudent?.id);
@@ -219,9 +218,14 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
         </div>
 
         {/* Attendance Rate */}
-        <div className="p-4 rounded-xl glass-card flex items-center justify-between">
+        <div
+          onClick={() => setActiveTab('ATTENDANCE')}
+          className="p-4 rounded-xl glass-card flex items-center justify-between cursor-pointer hover:border-indigo-500/50 transition-all group"
+        >
           <div>
-            <div className="text-xs text-slate-400 font-medium">Attendance Rate</div>
+            <div className="text-xs text-slate-400 font-medium group-hover:text-indigo-300 transition-colors">
+              Attendance Rate (Click to View Log)
+            </div>
             <div className="text-2xl font-black text-indigo-400 mt-0.5">{attendanceRate}%</div>
             <div className="text-[10px] text-slate-400 font-medium">
               {attendanceRate < APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD ? (
@@ -235,7 +239,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
               )}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
             <CalendarCheck className="w-5 h-5 text-indigo-400" />
           </div>
         </div>
@@ -269,7 +273,25 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
           }`}
         >
           <Award className="w-4 h-4" />
-          <span>Academic & Attendance Overview</span>
+          <span>Academic Overview</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('ATTENDANCE')}
+          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'ATTENDANCE'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25 ring-1 ring-indigo-400/40'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <CalendarCheck className="w-4 h-4" />
+          <span>Child Attendance (Live & Historical)</span>
+          {attendanceRate < APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-rose-500 text-white shadow-sm animate-pulse">
+              Warning
+            </span>
+          )}
         </button>
 
         <button
@@ -308,6 +330,55 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
           )}
         </button>
       </div>
+
+      {/* Child Subject-Wise Live & Historical Attendance Tab View */}
+      {activeTab === 'ATTENDANCE' && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="p-5 rounded-2xl glass-panel bg-gradient-to-r from-indigo-950/40 via-slate-900 to-purple-950/30 border border-indigo-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-wider">
+                <CalendarCheck className="w-4 h-4" />
+                <span>Parental Ward Attendance & Compliance Monitoring</span>
+              </div>
+              <h2 className="text-base font-bold text-white">
+                Live & Historical Subject-Wise Attendance for {selectedStudent.name}
+              </h2>
+              <p className="text-xs text-slate-300">
+                Official instructional records submitted directly by faculty members. Real-time evaluation against the mandatory {APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD}% statutory policy threshold.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 ${
+                attendanceRate >= APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+              }`}>
+                {attendanceRate >= APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD ? (
+                  <>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Compliance Verified</span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Statutory Shortage</span>
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+
+          <StudentAttendanceSection
+            studentId={selectedStudent.id}
+            studentName={selectedStudent.name}
+            regNumber={selectedStudent.regNumber}
+            courses={courses}
+            attendanceRecords={attendance}
+            isParentView={true}
+          />
+        </div>
+      )}
 
       {/* Ward Fee Clearance Tab View */}
       {activeTab === 'BILLING' && (

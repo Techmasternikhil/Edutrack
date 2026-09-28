@@ -102,9 +102,14 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
   fees = [],
   onSendFeeReminder
 }) => {
-  // Assigned courses for current faculty member only
+  // Assigned courses for current faculty member only (including co-faculty assignments)
   const myCourses = courses.filter(
-    (c) => c.facultyId === currentFaculty.id || c.facultyName === currentFaculty.name
+    (c) =>
+      c.facultyId === currentFaculty.id ||
+      c.facultyName === currentFaculty.name ||
+      c.coFaculties?.some(
+        (cf) => cf.facultyId === currentFaculty.id || cf.facultyName === currentFaculty.name
+      )
   );
 
   // Determine if this faculty is assigned as a class teacher
@@ -221,8 +226,17 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           <h1 className="text-xl md:text-2xl font-bold text-white mt-1">
             Welcome, {currentFaculty.name}
           </h1>
-          <p className="text-xs text-slate-300 mt-1">
-            Department of {currentFaculty.department || 'Computer Science & Engineering'} • {myCourses.length} Assigned Course{myCourses.length === 1 ? '' : 's'}
+          <p className="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-2">
+            <span>Department of {currentFaculty.department || 'CSE'}</span>
+            {currentFaculty.isFacultyAdvisor && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30 text-[10px]">
+                Faculty Advisor • {currentFaculty.assignedClassName || 'Section VII / VII-A'}
+              </span>
+            )}
+            {currentFaculty.designation && !currentFaculty.isFacultyAdvisor && (
+              <span className="text-slate-400">• {currentFaculty.designation}</span>
+            )}
+            <span>• {myCourses.length} Assigned Subject{myCourses.length === 1 ? '' : 's'}</span>
           </p>
         </div>
 
@@ -427,15 +441,33 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-bold text-white">{c.title}</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono">
-                              {c.code}
-                            </span>
+                            {c.mnemonic && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 font-bold border border-amber-500/20">
+                                {c.mnemonic}
+                              </span>
+                            )}
+                            {c.code && (
+                              <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono">
+                                {c.code}
+                              </span>
+                            )}
+                            {c.room && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 font-mono">
+                                Room: {c.room}
+                              </span>
+                            )}
                           </div>
                           <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{c.description}</p>
+                          {c.coFaculties && c.coFaculties.length > 0 && (
+                            <div className="text-[10px] text-slate-400 mt-1">
+                              Instructors: <span className="text-slate-300 font-medium">{c.facultyName}</span>,{' '}
+                              <span className="text-slate-300 font-medium">{c.coFaculties.map((cf) => cf.facultyName).join(', ')}</span>
+                            </div>
+                          )}
                         </div>
-                        <span className="text-xs font-bold text-slate-300">{c.credits} Credits</span>
+                        <span className="text-xs font-bold text-slate-300 shrink-0">{c.credits} Credits</span>
                       </div>
 
                       <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[11px] text-slate-400">
@@ -577,18 +609,38 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
                   className="p-5 rounded-2xl glass-panel border border-slate-700/60 hover:border-indigo-500/40 transition-all flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-mono text-xs font-bold border border-indigo-500/20">
-                        {c.code}
-                      </span>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {c.mnemonic && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-bold text-xs border border-amber-500/20">
+                            {c.mnemonic}
+                          </span>
+                        )}
+                        {c.code && (
+                          <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-mono text-xs font-bold border border-indigo-500/20">
+                            {c.code}
+                          </span>
+                        )}
+                        {c.subjectType && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                            {c.subjectType}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-xs text-slate-400">{c.credits} Credits • Sem {c.semester}</span>
                     </div>
 
                     <h3 className="text-sm font-bold text-white">{c.title}</h3>
                     <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{c.description}</p>
-                    <div className="text-[11px] text-slate-500 font-mono pt-1">
-                      {c.schedule} • Room: {c.room || 'Main Hall'}
+                    <div className="text-[11px] text-slate-400 font-mono pt-1">
+                      {c.schedule} • Room: {c.room || 'TBC101'}
                     </div>
+                    {c.coFaculties && c.coFaculties.length > 0 && (
+                      <div className="text-[11px] text-slate-400 pt-0.5">
+                        Instructors: <span className="text-slate-200 font-semibold">{c.facultyName}</span>,{' '}
+                        <span className="text-slate-200 font-semibold">{c.coFaculties.map((cf) => cf.facultyName).join(', ')}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-slate-800 space-y-3">
