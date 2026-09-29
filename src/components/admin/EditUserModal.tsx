@@ -33,7 +33,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
   const [regNumber, setRegNumber] = useState(user.regNumber || '');
   const [classId, setClassId] = useState(user.classId || (academicClasses[0]?.id || ''));
   const [semester, setSemester] = useState(user.semester || 1);
-  const [gpa, setGpa] = useState(user.gpa || 3.5);
+  const [gpa, setGpa] = useState(user.cgpa || user.gpa || 8.0);
 
   // Faculty specific
   const [isClassTeacher, setIsClassTeacher] = useState(Boolean(user.isClassTeacher));
@@ -99,7 +99,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
             classId: classId || undefined,
             className: resolvedClassName,
             semester: Number(semester) || 1,
-            gpa: Number(gpa) || undefined
+            gpa: Number(gpa) || undefined,
+            cgpa: Number(gpa) || undefined
           }
         : {}),
       // Faculty details
@@ -326,13 +327,13 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                    Current GPA
+                    Cumulative CGPA (10-pt Scale)
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     min={0}
-                    max={4}
+                    max={10}
                     value={gpa}
                     onChange={(e) => setGpa(Number(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-emerald-500"

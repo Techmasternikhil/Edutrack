@@ -236,7 +236,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.82,
+    gpa: 8.12,
+    cgpa: 8.12,
     avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -251,7 +252,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.91,
+    gpa: 8.35,
+    cgpa: 8.35,
     avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -266,7 +268,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.78,
+    gpa: 7.78,
+    cgpa: 7.78,
     avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -281,7 +284,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.88,
+    gpa: 8.24,
+    cgpa: 8.24,
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -296,7 +300,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.65,
+    gpa: 7.45,
+    cgpa: 7.45,
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -311,7 +316,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.95,
+    gpa: 8.42,
+    cgpa: 8.42,
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -326,7 +332,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.72,
+    gpa: 7.68,
+    cgpa: 7.68,
     avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -341,7 +348,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.84,
+    gpa: 8.16,
+    cgpa: 8.16,
     avatarUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -356,7 +364,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.59,
+    gpa: 7.32,
+    cgpa: 7.32,
     avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80'
   },
   {
@@ -371,7 +380,8 @@ export const mockUsers: User[] = [
     classId: 'cls-cse-4-vii-a',
     className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
     semester: 4,
-    gpa: 3.92,
+    gpa: 8.38,
+    cgpa: 8.38,
     avatarUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80'
   },
 

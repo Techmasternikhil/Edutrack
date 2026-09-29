@@ -86,6 +86,7 @@ export interface User {
   classId?: string;
   className?: string;
   gpa?: number;
+  cgpa?: number;
   semester?: number;
   createdAt?: string;
   designation?: string;

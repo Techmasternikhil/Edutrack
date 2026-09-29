@@ -65,8 +65,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 <div className="text-slate-200 font-semibold">{currentUser.regNumber}</div>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-800/50 border border-slate-800">
-                <div className="text-[10px] text-slate-400 font-medium">Current GPA</div>
-                <div className="text-emerald-400 font-bold">{currentUser.gpa?.toFixed(2)}</div>
+                <div className="text-[10px] text-slate-400 font-medium">Current CGPA</div>
+                <div className="text-emerald-400 font-bold">{(currentUser.cgpa || currentUser.gpa)?.toFixed(2)}</div>
               </div>
             </div>
           )}

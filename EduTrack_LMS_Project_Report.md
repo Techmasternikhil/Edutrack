@@ -372,18 +372,18 @@ erDiagram
 
 All 10 enrolled students and their corresponding legal parents/guardians are fully configured with authentic Indian naming, isolated parent-student relationship keys (`childStudentIds`), GPA scores, and academic fee ledger profiles.
 
-| # | Student Name | Reg Number | Student Login Email | Parent / Guardian | Parent Login Email | GPA | Fee Status |
+| # | Student Name | Reg Number | Student Login Email | Parent / Guardian | Parent Login Email | CGPA | Fee Status |
 |---|---|---|---|---|---|:---:|:---:|
-| 1 | **Aarav Sharma** | `CS-2024-041` | `aarav.sharma@student.edutrack.edu` | **Raveendra Sharma** | `raveendra.sharma@gmail.com` | 3.82 | PAID |
-| 2 | **Diya Patel** | `CS-2024-042` | `diya.patel@student.edutrack.edu` | **Suresh Patel** | `suresh.patel@gmail.com` | 3.91 | PENDING |
-| 3 | **Rohan Iyer** | `CS-2024-043` | `rohan.iyer@student.edutrack.edu` | **Subramanian Iyer** | `subramanian.iyer@gmail.com` | 3.78 | OVERDUE |
-| 4 | **Ananya Deshmukh** | `CS-2024-044` | `ananya.deshmukh@student.edutrack.edu` | **Rajesh Deshmukh** | `rajesh.deshmukh@gmail.com` | 3.88 | PAID |
-| 5 | **Aditya Verma** | `CS-2024-045` | `aditya.verma@student.edutrack.edu` | **Manoj Verma** | `manoj.verma@gmail.com` | 3.65 | PAID |
-| 6 | **Pooja Sundaram** | `CS-2024-046` | `pooja.sundaram@student.edutrack.edu` | **Gopal Sundaram** | `gopal.sundaram@gmail.com` | 3.95 | PAID |
-| 7 | **Karthik Raman** | `CS-2024-047` | `karthik.raman@student.edutrack.edu` | **Venkatesh Raman** | `venkatesh.raman@gmail.com` | 3.72 | PENDING |
-| 8 | **Sneha Kulkarni** | `CS-2024-048` | `sneha.kulkarni@student.edutrack.edu` | **Anand Kulkarni** | `anand.kulkarni@gmail.com` | 3.84 | PAID |
-| 9 | **Vikram Choudhury** | `CS-2024-049` | `vikram.choudhury@student.edutrack.edu` | **Debashis Choudhury** | `debashis.choudhury@gmail.com` | 3.59 | OVERDUE |
-| 10 | **Meera Nair** | `CS-2024-050` | `meera.nair@student.edutrack.edu` | **Balachandran Nair** | `balachandran.nair@gmail.com` | 3.92 | PAID |
+| 1 | **Aarav Sharma** | `CS-2024-041` | `aarav.sharma@student.edutrack.edu` | **Raveendra Sharma** | `raveendra.sharma@gmail.com` | 8.12 | PAID |
+| 2 | **Diya Patel** | `CS-2024-042` | `diya.patel@student.edutrack.edu` | **Suresh Patel** | `suresh.patel@gmail.com` | 8.35 | PENDING |
+| 3 | **Rohan Iyer** | `CS-2024-043` | `rohan.iyer@student.edutrack.edu` | **Subramanian Iyer** | `subramanian.iyer@gmail.com` | 7.78 | OVERDUE |
+| 4 | **Ananya Deshmukh** | `CS-2024-044` | `ananya.deshmukh@student.edutrack.edu` | **Rajesh Deshmukh** | `rajesh.deshmukh@gmail.com` | 8.24 | PAID |
+| 5 | **Aditya Verma** | `CS-2024-045` | `aditya.verma@student.edutrack.edu` | **Manoj Verma** | `manoj.verma@gmail.com` | 7.45 | PAID |
+| 6 | **Pooja Sundaram** | `CS-2024-046` | `pooja.sundaram@student.edutrack.edu` | **Gopal Sundaram** | `gopal.sundaram@gmail.com` | 8.42 | PAID |
+| 7 | **Karthik Raman** | `CS-2024-047` | `karthik.raman@student.edutrack.edu` | **Venkatesh Raman** | `venkatesh.raman@gmail.com` | 7.68 | PENDING |
+| 8 | **Sneha Kulkarni** | `CS-2024-048` | `sneha.kulkarni@student.edutrack.edu` | **Anand Kulkarni** | `anand.kulkarni@gmail.com` | 8.16 | PAID |
+| 9 | **Vikram Choudhury** | `CS-2024-049` | `vikram.choudhury@student.edutrack.edu` | **Debashis Choudhury** | `debashis.choudhury@gmail.com` | 7.32 | OVERDUE |
+| 10 | **Meera Nair** | `CS-2024-050` | `meera.nair@student.edutrack.edu` | **Balachandran Nair** | `balachandran.nair@gmail.com` | 8.38 | PAID |
 
 *All student and parent accounts use the default demonstration security credentials (`password123`).*
 

@@ -182,10 +182,10 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl glass-card flex items-center justify-between">
           <div>
-            <div className="text-xs text-slate-400 font-medium">Cumulative GPA</div>
-            <div className="text-2xl font-black text-emerald-400 mt-1">{currentStudent.gpa?.toFixed(2)}</div>
+            <div className="text-xs text-slate-400 font-medium">Cumulative CGPA</div>
+            <div className="text-2xl font-black text-emerald-400 mt-1">{(currentStudent.cgpa || currentStudent.gpa)?.toFixed(2)}</div>
             <div className="text-[10px] text-emerald-500/80 font-medium flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> Dean's List Standing
+              <TrendingUp className="w-3 h-3" /> First Class with Distinction (10-pt Scale)
             </div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
