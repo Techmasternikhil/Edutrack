@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Course, ParentReview, Submission, RegistrationRequest, AcademicClass, FeeRecord } from '../types';
+import { User, Course, ParentReview, Submission, RegistrationRequest, AcademicClass, FeeRecord, ProfileChangeRequest } from '../types';
 import {
   Users,
   BookOpen,
@@ -16,10 +16,12 @@ import {
   School,
   FileText,
   Edit3,
-  Receipt
+  Receipt,
+  UserCheck2
 } from 'lucide-react';
 import { EditUserModal } from './admin/EditUserModal';
 import { BillingAlertManager } from './billing/BillingAlertManager';
+import { AdminFacultyProfileApprovalQueue } from './admin/AdminFacultyProfileApprovalQueue';
 
 interface AdminDashboardProps {
   users: User[];
@@ -52,6 +54,9 @@ interface AdminDashboardProps {
     description: string;
     semester: number;
   }) => void;
+  profileChangeRequests?: ProfileChangeRequest[];
+  onApproveProfileRequest?: (requestId: string) => Promise<void>;
+  onRejectProfileRequest?: (requestId: string, reason: string) => Promise<void>;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -69,10 +74,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateUser,
   fees = [],
   onSendFeeReminder,
-  onCreateInvoice
+  onCreateInvoice,
+  profileChangeRequests = [],
+  onApproveProfileRequest,
+  onRejectProfileRequest
 }) => {
   const [filterRole, setFilterRole] = useState<string>('ALL');
-  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'COURSES' | 'REGISTRATIONS' | 'USERS' | 'BILLING'>('OVERVIEW');
+  const [adminTab, setAdminTab] = useState<'OVERVIEW' | 'COURSES' | 'REGISTRATIONS' | 'USERS' | 'BILLING' | 'FACULTY_PROFILES'>('OVERVIEW');
 
   // Edit User Modal state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -215,6 +223,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           { id: 'OVERVIEW', label: 'Administration Overview', icon: ShieldAlert },
           { id: 'COURSES', label: 'Academic Management (Subjects)', icon: BookOpen, badge: courses.length },
           { id: 'REGISTRATIONS', label: 'Registration Clearances', icon: School, badge: pendingAdminRequests.length },
+          {
+            id: 'FACULTY_PROFILES',
+            label: 'Faculty Profile Changes',
+            icon: UserCheck2,
+            badge: profileChangeRequests.filter((r) => r.approvalLevel === 'ADMIN' && r.status === 'PENDING').length
+          },
           { id: 'USERS', label: 'User Accounts Directory', icon: Users, badge: users.length },
           { id: 'BILLING', label: 'Institutional Billing & Fee Alerts', icon: Receipt, badge: fees.filter((f) => f.status === 'OVERDUE' || f.status === 'PENDING').length }
         ].map((tab) => {
@@ -671,6 +685,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
       </div>
+      )}
+
+      {/* Faculty Profile Change Requests Queue */}
+      {adminTab === 'FACULTY_PROFILES' && (
+        <AdminFacultyProfileApprovalQueue
+          currentAdmin={users.find((u) => u.role === 'ADMIN') || users[0]}
+          requests={profileChangeRequests}
+          onApproveRequest={async (reqId) => {
+            if (onApproveProfileRequest) {
+              await onApproveProfileRequest(reqId);
+            }
+          }}
+          onRejectRequest={async (reqId, reason) => {
+            if (onRejectProfileRequest) {
+              await onRejectProfileRequest(reqId, reason);
+            }
+          }}
+        />
       )}
 
       {/* Add Administrator Modal */}

@@ -10,7 +10,13 @@ import {
   AttendanceRecord,
   ParentReview,
   RegistrationRequest,
-  FeeRecord
+  FeeRecord,
+  AttendanceRegularizationRequest,
+  ExamAssessment,
+  ExamResult,
+  ExamType,
+  AttendanceStatus,
+  ProfileChangeRequest
 } from '../types';
 import { APP_CONFIG } from '../config/constants';
 import { YouTubeVideoPlayer } from './faculty/YouTubeVideoPlayer';
@@ -21,6 +27,12 @@ import { QuizAnalyticsModal } from './faculty/QuizAnalyticsModal';
 import { AssignmentFormModal } from './faculty/AssignmentFormModal';
 import { AttendanceSessionManager } from './faculty/AttendanceSessionManager';
 import { BillingAlertManager } from './billing/BillingAlertManager';
+import { ClassTeacherRegularizationReview } from './faculty/ClassTeacherRegularizationReview';
+import { FacultyAdjustmentQueue } from './faculty/FacultyAdjustmentQueue';
+import { HistoricalAttendanceEditor } from './faculty/HistoricalAttendanceEditor';
+import { FacultyExamResultsManager } from './faculty/FacultyExamResultsManager';
+import { ProfileManagementView } from './profile/ProfileManagementView';
+import { ClassTeacherProfileApprovalQueue } from './faculty/ClassTeacherProfileApprovalQueue';
 import {
   BookOpen,
   Users,
@@ -62,6 +74,10 @@ interface FacultyDashboardProps {
   students: User[];
   registrationRequests?: RegistrationRequest[];
   fees?: FeeRecord[];
+  attendanceRequests?: AttendanceRegularizationRequest[];
+  examAssessments?: ExamAssessment[];
+  examResults?: ExamResult[];
+  profileChangeRequests?: ProfileChangeRequest[];
   onConfirmRegistration?: (requestId: string) => void;
   onRejectRegistration?: (requestId: string, reason: string) => void;
   onGradeSubmission: (submissionId: string, marks: number, feedback: string) => void;
@@ -74,6 +90,16 @@ interface FacultyDashboardProps {
   onDeleteAssignment: (assignmentId: string) => void;
   onSaveAttendance: (courseId: string, date: string, records: { studentId: string; studentName: string; status: any }[]) => void;
   onSendFeeReminder?: (feeId: string, customMessage?: string) => void;
+  onReviewRegularizationRequest?: (requestId: string, decision: 'APPROVE' | 'REJECT', reason?: string, sessionIds?: string[]) => void;
+  onFacultyDecisionAdjustment?: (requestId: string, sessionId: string, decision: 'APPROVED' | 'REJECTED', reason?: string) => void;
+  onUpdateHistoricalAttendance?: (attendanceId: string, newStatus: AttendanceStatus, reason: string) => void;
+  onCreateExamAssessment?: (data: { courseId: string; courseCode: string; examType: ExamType; title: string; maxMarks: number; examDate: string }) => void;
+  onSaveExamResults?: (assessmentId: string, results: { studentId: string; marksObtained: number; remarks?: string }[]) => void;
+  onPublishExamAssessment?: (assessmentId: string) => void;
+  onApproveProfileRequest?: (requestId: string) => Promise<void>;
+  onRejectProfileRequest?: (requestId: string, reason: string) => Promise<void>;
+  onSubmitProfileRequest?: (payload: { changes: Record<string, any>; pendingAvatarUrl?: string; requestType?: string }) => Promise<void>;
+  onCancelProfileRequest?: (requestId: string) => Promise<void>;
 }
 
 export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
@@ -88,6 +114,11 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
   parentReviews,
   students,
   registrationRequests = [],
+  fees = [],
+  attendanceRequests = [],
+  examAssessments = [],
+  examResults = [],
+  profileChangeRequests = [],
   onConfirmRegistration,
   onRejectRegistration,
   onGradeSubmission,
@@ -99,8 +130,17 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
   onSaveAssignment,
   onDeleteAssignment,
   onSaveAttendance,
-  fees = [],
-  onSendFeeReminder
+  onSendFeeReminder,
+  onReviewRegularizationRequest,
+  onFacultyDecisionAdjustment,
+  onUpdateHistoricalAttendance,
+  onCreateExamAssessment,
+  onSaveExamResults,
+  onPublishExamAssessment,
+  onApproveProfileRequest,
+  onRejectProfileRequest,
+  onSubmitProfileRequest,
+  onCancelProfileRequest
 }) => {
   // Assigned courses for current faculty member only (including co-faculty assignments)
   const myCourses = courses.filter(
@@ -293,16 +333,57 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
         {[
           { id: 'OVERVIEW', label: 'Dashboard Overview', icon: BookOpen },
           { id: 'SUBJECTS', label: 'My Subjects', icon: Users },
+          { id: 'ATTENDANCE', label: 'Mark Attendance', icon: CalendarCheck },
+          { id: 'HISTORICAL_ATTENDANCE', label: 'Attendance History & Edit', icon: CalendarCheck },
+          {
+            id: 'ADJUSTMENTS',
+            label: 'Attendance Adjustments',
+            icon: CheckCircle2,
+            badge: attendanceRequests.filter(
+              (r) =>
+                (r.status === 'CLASS_TEACHER_APPROVED' || r.status === 'FORWARDED_TO_SUBJECT_FACULTY' || r.status === 'PARTIALLY_APPROVED') &&
+                r.affectedSessions?.some((s) => (!s.facultyDecision || s.facultyDecision === 'PENDING'))
+            ).length
+          },
+          ...(isClassTeacher
+            ? [{
+                id: 'TEACHER_REGULARIZATIONS',
+                label: 'Class Attendance Requests',
+                icon: School,
+                badge: attendanceRequests.filter(
+                  (r) => r.status === 'PENDING_CLASS_TEACHER_REVIEW' || r.status === 'SUBMITTED' || r.status === 'DOCUMENT_UPLOADED'
+                ).length
+              }]
+            : []),
+          { id: 'EXAM_RESULTS', label: 'IAT & Model Results', icon: Award },
           { id: 'VIDEOS', label: 'Teaching Videos', icon: Video, badge: relevantVideos.length },
           { id: 'MATERIALS', label: 'Study Materials', icon: FileText, badge: relevantDocuments.length },
           { id: 'QUIZZES', label: 'Quizzes & MCQ', icon: Award, badge: relevantQuizzes.length },
           { id: 'ASSIGNMENTS', label: 'Assignments & Submissions', icon: FileCheck2, badge: pendingSubmissions.length },
-          { id: 'ATTENDANCE', label: 'Attendance Sessions', icon: CalendarCheck },
           { id: 'PARENTS', label: 'Parent Inquiries', icon: MessageSquare, badge: parentReviews.length },
           { id: 'BILLING', label: 'Fee Dues & Alerts', icon: Receipt, badge: fees.filter((f) => f.status === 'OVERDUE' || f.status === 'PENDING').length },
           ...(isClassTeacher
-            ? [{ id: 'REGISTRATIONS', label: 'Registration Requests', icon: UserCheck2, badge: pendingTeacherRequests.length }]
-            : [])
+            ? [{ id: 'REGISTRATIONS', label: 'Registration Requests', icon: UserCheck2, badge: pendingTeacherRequests.length },
+               {
+                 id: 'TEACHER_PROFILE_REQUESTS',
+                 label: 'Student & Parent Profile Requests',
+                 icon: UserCheck2,
+                 badge: profileChangeRequests.filter(
+                   (r) =>
+                     r.approvalLevel === 'CLASS_TEACHER' &&
+                     r.status === 'PENDING' &&
+                     (r.classTeacherId === currentFaculty.id ||
+                      (currentFaculty.assignedClassId && r.classId === currentFaculty.assignedClassId) ||
+                      currentFaculty.isClassTeacher)
+                 ).length
+               }]
+            : []),
+          {
+            id: 'MY_PROFILE',
+            label: 'My Profile & Settings',
+            icon: Users,
+            badge: profileChangeRequests.filter((r) => r.userId === currentFaculty.id && r.status === 'PENDING').length || undefined
+          }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1171,6 +1252,77 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
         </div>
       )}
 
+      {/* Historical Attendance History & Edit Tab */}
+      {activeTab === 'HISTORICAL_ATTENDANCE' && (
+        <HistoricalAttendanceEditor
+          currentFaculty={currentFaculty}
+          courses={myCourses}
+          students={students}
+          attendance={attendance}
+          onUpdateHistoricalAttendance={(attId, st, reas) => {
+            if (onUpdateHistoricalAttendance) {
+              onUpdateHistoricalAttendance(attId, st, reas);
+            }
+          }}
+        />
+      )}
+
+      {/* Subject Faculty Attendance Adjustment Queue Tab */}
+      {activeTab === 'ADJUSTMENTS' && (
+        <FacultyAdjustmentQueue
+          currentFaculty={currentFaculty}
+          requests={attendanceRequests}
+          courses={myCourses}
+          onDecision={(reqId, sessId, dec, reas) => {
+            if (onFacultyDecisionAdjustment) {
+              onFacultyDecisionAdjustment(reqId, sessId, dec, reas);
+            }
+          }}
+        />
+      )}
+
+      {/* Class Teacher Regularization Reviews Tab */}
+      {activeTab === 'TEACHER_REGULARIZATIONS' && isClassTeacher && (
+        <ClassTeacherRegularizationReview
+          currentTeacher={currentFaculty}
+          requests={attendanceRequests}
+          courses={courses}
+          students={students}
+          attendance={attendance}
+          onReviewRequest={(reqId, dec, reas, sessIds) => {
+            if (onReviewRegularizationRequest) {
+              onReviewRegularizationRequest(reqId, dec, reas, sessIds);
+            }
+          }}
+        />
+      )}
+
+      {/* Internal Exam Results Management (IAT 1, IAT 2, Model) Tab */}
+      {activeTab === 'EXAM_RESULTS' && (
+        <FacultyExamResultsManager
+          currentFaculty={currentFaculty}
+          courses={myCourses}
+          students={students}
+          assessments={examAssessments}
+          results={examResults}
+          onCreateAssessment={(data) => {
+            if (onCreateExamAssessment) {
+              onCreateExamAssessment(data);
+            }
+          }}
+          onSaveResults={(asmtId, resList) => {
+            if (onSaveExamResults) {
+              onSaveExamResults(asmtId, resList);
+            }
+          }}
+          onPublishAssessment={(asmtId) => {
+            if (onPublishExamAssessment) {
+              onPublishExamAssessment(asmtId);
+            }
+          }}
+        />
+      )}
+
       {/* ============================================================== */}
       {/* 8. PARENTS TAB                                                */}
       {/* ============================================================== */}
@@ -1416,6 +1568,43 @@ export const FacultyDashboard: React.FC<FacultyDashboardProps> = ({
           onSendReminder={(feeId, msg) => {
             if (onSendFeeReminder) {
               onSendFeeReminder(feeId, msg);
+            }
+          }}
+        />
+      )}
+
+      {/* Class Teacher: Student & Parent Profile Change Requests Queue */}
+      {activeTab === 'TEACHER_PROFILE_REQUESTS' && isClassTeacher && (
+        <ClassTeacherProfileApprovalQueue
+          currentFaculty={currentFaculty}
+          requests={profileChangeRequests}
+          onApproveRequest={async (reqId) => {
+            if (onApproveProfileRequest) {
+              await onApproveProfileRequest(reqId);
+            }
+          }}
+          onRejectRequest={async (reqId, reason) => {
+            if (onRejectProfileRequest) {
+              await onRejectProfileRequest(reqId, reason);
+            }
+          }}
+        />
+      )}
+
+      {/* Faculty Self Profile & Settings Management Tab */}
+      {activeTab === 'MY_PROFILE' && (
+        <ProfileManagementView
+          currentUser={currentFaculty}
+          pendingRequest={profileChangeRequests.find((r) => r.userId === currentFaculty.id && r.status === 'PENDING') || null}
+          requestHistory={profileChangeRequests.filter((r) => r.userId === currentFaculty.id)}
+          onSubmitRequest={async (payload) => {
+            if (onSubmitProfileRequest) {
+              await onSubmitProfileRequest(payload);
+            }
+          }}
+          onCancelRequest={async (reqId) => {
+            if (onCancelProfileRequest) {
+              await onCancelProfileRequest(reqId);
             }
           }}
         />

@@ -1,7 +1,22 @@
 import React, { useState } from 'react';
-import { User, Course, Submission, QuizAttempt, AttendanceRecord, ParentReview, FeeRecord, PaymentMethod } from '../types';
+import {
+  User,
+  Course,
+  Submission,
+  QuizAttempt,
+  AttendanceRecord,
+  ParentReview,
+  FeeRecord,
+  PaymentMethod,
+  ExamAssessment,
+  ExamResult,
+  SMSNotificationRecord,
+  ProfileChangeRequest
+} from '../types';
 import { StudentBillingSection } from './student/StudentBillingSection';
 import { StudentAttendanceSection } from './student/StudentAttendanceSection';
+import { StudentExamResultsSection } from './student/StudentExamResultsSection';
+import { ProfileManagementView } from './profile/ProfileManagementView';
 import {
   Users,
   Award,
@@ -18,7 +33,9 @@ import {
   HeartHandshake,
   Receipt,
   CreditCard,
-  MessageSquareQuote
+  MessageSquareQuote,
+  Smartphone,
+  User as UserIcon
 } from 'lucide-react';
 import { APP_CONFIG } from '../config/constants';
 import { calculateAttendanceMetrics } from '../utils/academic';
@@ -43,8 +60,14 @@ interface ParentDashboardProps {
   attendance: AttendanceRecord[];
   reviews: ParentReview[];
   fees?: FeeRecord[];
+  examAssessments?: ExamAssessment[];
+  examResults?: ExamResult[];
+  smsNotifications?: SMSNotificationRecord[];
+  profileChangeRequests?: ProfileChangeRequest[];
   onSubmitReview: (review: Omit<ParentReview, 'id' | 'createdAt' | 'status'>) => void;
   onPayFee?: (feeId: string, paymentMethod: PaymentMethod, transactionRef: string) => void;
+  onSubmitProfileRequest?: (payload: { changes: Record<string, any>; pendingAvatarUrl?: string; requestType?: string }) => Promise<void>;
+  onCancelProfileRequest?: (requestId: string) => Promise<void>;
 }
 
 export const ParentDashboard: React.FC<ParentDashboardProps> = ({
@@ -56,8 +79,14 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
   attendance,
   reviews,
   fees = [],
+  examAssessments = [],
+  examResults = [],
+  smsNotifications = [],
+  profileChangeRequests = [],
   onSubmitReview,
-  onPayFee
+  onPayFee,
+  onSubmitProfileRequest,
+  onCancelProfileRequest
 }) => {
   // Linked children strictly limited to this parent's authorized IDs
   const linkedChildren = allUsers.filter(
@@ -78,7 +107,13 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
   const selectedStudent = linkedChildren.find((c) => c.id === selectedStudentId) || linkedChildren[0];
 
   // Forms state for Parent Review / Inquiry
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ATTENDANCE' | 'BILLING' | 'REMARKS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ATTENDANCE' | 'RESULTS' | 'SMS_LOGS' | 'BILLING' | 'REMARKS' | 'PROFILE'>('OVERVIEW');
+
+  // Parent pending profile request
+  const myPendingProfileRequest = profileChangeRequests.find(
+    (r) => r.userId === currentParent.id && r.status === 'PENDING'
+  ) || null;
+  const myProfileHistory = profileChangeRequests.filter((r) => r.userId === currentParent.id);
   const [reviewTitle, setReviewTitle] = useState('');
   const [reviewMessage, setReviewMessage] = useState('');
   const [reviewCategory, setReviewCategory] = useState<ParentReview['category']>('GENERAL');
@@ -296,6 +331,42 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
 
         <button
           type="button"
+          onClick={() => setActiveTab('RESULTS')}
+          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'RESULTS'
+              ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-1 ring-purple-400/40'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Award className="w-4 h-4" />
+          <span>Internal Exam Results</span>
+          {examAssessments.filter((a) => a.status === 'PUBLISHED').length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-white/20 text-white">
+              {examAssessments.filter((a) => a.status === 'PUBLISHED').length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('SMS_LOGS')}
+          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'SMS_LOGS'
+              ? 'bg-amber-600 text-white shadow-md shadow-amber-600/25 ring-1 ring-amber-400/40'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Smartphone className="w-4 h-4" />
+          <span>Absence SMS Alerts</span>
+          {smsNotifications.filter((s) => s.studentId === selectedStudent.id).length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-800 text-slate-300">
+              {smsNotifications.filter((s) => s.studentId === selectedStudent.id).length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('BILLING')}
           className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
             activeTab === 'BILLING'
@@ -326,6 +397,24 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
           {studentReviews.length > 0 && (
             <span className="text-[10px] px-2 py-0.2 rounded-full font-semibold bg-slate-800 text-slate-300">
               {studentReviews.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('PROFILE')}
+          className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer ${
+            activeTab === 'PROFILE'
+              ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25 ring-1 ring-purple-400/40'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <UserIcon className="w-4 h-4" />
+          <span>My Profile & Settings</span>
+          {myPendingProfileRequest && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500 text-slate-950 animate-pulse">
+              Pending
             </span>
           )}
         </button>
@@ -377,6 +466,94 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
             attendanceRecords={attendance}
             isParentView={true}
           />
+        </div>
+      )}
+
+      {/* Child Internal Exam Results Tab View */}
+      {activeTab === 'RESULTS' && (
+        <StudentExamResultsSection
+          student={selectedStudent}
+          courses={courses}
+          assessments={examAssessments}
+          results={examResults}
+          isParentView={true}
+        />
+      )}
+
+      {/* Absence SMS Delivery Ledger Tab View */}
+      {activeTab === 'SMS_LOGS' && (
+        <div className="space-y-4 animate-in fade-in">
+          <div className="p-5 rounded-2xl glass-panel bg-gradient-to-r from-amber-950/40 via-slate-900 to-indigo-950/30 border border-amber-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                <Smartphone className="w-4 h-4" />
+                <span>Automated Parent Absence SMS Notification Ledger</span>
+              </div>
+              <h2 className="text-base font-bold text-white">
+                Dispatch Records for Registered Mobile ({currentParent.phone ? currentParent.phone.slice(0, 7) + 'XXXX' : '+91 98401 XXXXX'})
+              </h2>
+              <p className="text-xs text-slate-300">
+                Institutional SMS alerts dispatched immediately whenever {selectedStudent.name} is marked ABSENT for a lecture period.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-5 rounded-2xl glass-panel border border-slate-800 space-y-4">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-900/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                  <tr>
+                    <th className="py-2.5 px-3">Dispatch Time</th>
+                    <th className="py-2.5 px-3">Subject / Course</th>
+                    <th className="py-2.5 px-3">Masked Number</th>
+                    <th className="py-2.5 px-3">Message Content</th>
+                    <th className="py-2.5 px-3 text-center">Delivery Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-medium">
+                  {smsNotifications.filter((s) => s.studentId === selectedStudent.id).length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-500 text-xs">
+                        No absence SMS alerts sent for this student. Perfect session attendance or no unexcused absences.
+                      </td>
+                    </tr>
+                  ) : (
+                    smsNotifications
+                      .filter((s) => s.studentId === selectedStudent.id)
+                      .map((sms) => (
+                        <tr key={sms.id} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="py-2.5 px-3 font-mono text-slate-300 whitespace-nowrap">
+                            {new Date(sms.sentAt || sms.createdAt).toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-white">
+                            {sms.courseName || sms.courseCode}
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-slate-400">
+                            {sms.phoneNumberMasked}
+                          </td>
+                          <td className="py-2.5 px-3 text-[11px] text-slate-300 max-w-xs truncate">
+                            {sms.message}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                sms.deliveryStatus === 'DELIVERED' || sms.deliveryStatus === 'SENT'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                  : sms.deliveryStatus === 'QUEUED'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                  : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                              }`}
+                            >
+                              {sms.deliveryStatus}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -889,6 +1066,25 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Parent Profile & Settings Management Section */}
+      {activeTab === 'PROFILE' && (
+        <ProfileManagementView
+          currentUser={currentParent}
+          pendingRequest={myPendingProfileRequest}
+          requestHistory={myProfileHistory}
+          onSubmitRequest={async (payload) => {
+            if (onSubmitProfileRequest) {
+              await onSubmitProfileRequest(payload);
+            }
+          }}
+          onCancelRequest={async (reqId) => {
+            if (onCancelProfileRequest) {
+              await onCancelProfileRequest(reqId);
+            }
+          }}
+        />
       )}
     </div>
   );

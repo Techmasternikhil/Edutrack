@@ -12,7 +12,8 @@ import {
   ParentReview,
   AcademicClass,
   RegistrationRequest,
-  FeeRecord
+  FeeRecord,
+  ProfileChangeRequest
 } from '../types';
 
 export const mockAcademicClasses: AcademicClass[] = [
@@ -390,6 +391,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-1',
     name: 'Raveendra Sharma',
     email: 'raveendra.sharma@edutrack.edu',
+    phone: '+91 98401 23451',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -400,6 +402,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-2',
     name: 'Suresh Patel',
     email: 'suresh.patel@gmail.com',
+    phone: '+91 98401 23452',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -410,6 +413,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-3',
     name: 'Subramanian Iyer',
     email: 'subramanian.iyer@gmail.com',
+    phone: '+91 98401 23453',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -420,6 +424,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-4',
     name: 'Rajesh Deshmukh',
     email: 'rajesh.deshmukh@gmail.com',
+    phone: '+91 98401 23454',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -430,6 +435,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-5',
     name: 'Manoj Verma',
     email: 'manoj.verma@gmail.com',
+    phone: '+91 98401 23455',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -440,6 +446,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-6',
     name: 'Gopal Sundaram',
     email: 'gopal.sundaram@gmail.com',
+    phone: '+91 98401 23456',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -450,6 +457,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-7',
     name: 'Venkatesh Raman',
     email: 'venkatesh.raman@gmail.com',
+    phone: '+91 98401 23457',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -460,6 +468,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-8',
     name: 'Anand Kulkarni',
     email: 'anand.kulkarni@gmail.com',
+    phone: '+91 98401 23458',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -470,6 +479,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-9',
     name: 'Debashis Choudhury',
     email: 'debashis.choudhury@gmail.com',
+    phone: '+91 98401 23459',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -480,6 +490,7 @@ export const mockUsers: User[] = [
     id: 'usr-parent-10',
     name: 'Balachandran Nair',
     email: 'balachandran.nair@gmail.com',
+    phone: '+91 98401 23460',
     role: 'PARENT',
     status: 'APPROVED',
     accountStatus: 'ACTIVE',
@@ -1394,4 +1405,472 @@ export const mockFeeRecords: FeeRecord[] = [
     remarks: 'Cleared via UPI.'
   }
 ];
+
+export const mockAttendanceRequests: any[] = [
+  {
+    id: 'req-med-01',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    studentRegNumber: 'CS-2024-041',
+    classId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    classTeacherId: 'usr-fac-elankavi',
+    classTeacherName: 'Dr. R. Elankavi',
+    requestType: 'MEDICAL',
+    fromDate: '2026-09-21',
+    toDate: '2026-09-23',
+    reason: 'Severe viral fever and typhoid diagnosed with physician-mandated bed rest.',
+    optionalNote: 'Prescription and medical certificate from Apollo Hospitals attached.',
+    status: 'FORWARDED_TO_SUBJECT_FACULTY',
+    documents: [
+      {
+        id: 'doc-med-01',
+        requestId: 'req-med-01',
+        documentType: 'MEDICAL_CERTIFICATE',
+        fileName: 'Medical_Certificate_AaravSharma_Apollo.pdf',
+        fileUrl: 'https://documents.edutrack.edu/medical/2026/med-01-aarav.pdf',
+        mimeType: 'application/pdf',
+        fileSize: '1.4 MB',
+        uploadedBy: 'usr-stu-1',
+        uploadedAt: '2026-09-24T10:00:00Z'
+      }
+    ],
+    affectedSessions: [
+      {
+        id: 'sess-01',
+        requestId: 'req-med-01',
+        attendanceId: 'att-101',
+        courseId: 'crs-os-tp',
+        courseCode: '35021C19',
+        courseName: 'Operating System Theory and Practical',
+        sessionDate: '2026-09-21',
+        periodNumber: 5,
+        timeRange: '01:35 PM – 02:25 PM',
+        facultyId: 'usr-fac-gayathri',
+        facultyName: 'Mrs. Gayathri',
+        originalStatus: 'ABSENT',
+        classTeacherApproved: true,
+        facultyStatus: 'PENDING'
+      },
+      {
+        id: 'sess-02',
+        requestId: 'req-med-01',
+        attendanceId: 'att-102',
+        courseId: 'crs-se',
+        courseCode: '35021C13',
+        courseName: 'Software Engineering',
+        sessionDate: '2026-09-22',
+        periodNumber: 4,
+        timeRange: '10:50 AM – 11:50 AM',
+        facultyId: 'usr-fac-sarika',
+        facultyName: 'Dr. N. Sarika',
+        originalStatus: 'ABSENT',
+        classTeacherApproved: true,
+        facultyStatus: 'PENDING'
+      }
+    ],
+    classTeacherReviewedAt: '2026-09-24T14:30:00Z',
+    classTeacherDecision: 'APPROVED',
+    classTeacherReason: 'Authentic hospital discharge and medical certificate verified. Forwarded to respective course faculties for regularization.',
+    submittedAt: '2026-09-24T10:05:00Z',
+    createdAt: '2026-09-24T10:05:00Z',
+    updatedAt: '2026-09-24T14:30:00Z'
+  },
+  {
+    id: 'req-od-01',
+    studentId: 'usr-stu-2',
+    studentName: 'Diya Patel',
+    studentRegNumber: 'CS-2024-042',
+    classId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    classTeacherId: 'usr-fac-elankavi',
+    classTeacherName: 'Dr. R. Elankavi',
+    requestType: 'OD',
+    fromDate: '2026-09-16',
+    toDate: '2026-09-17',
+    reason: 'Representing university in National Cyber Security Hackathon finals.',
+    eventName: 'Smart India Hackathon Finals 2026',
+    eventType: 'Competition',
+    eventVenue: 'IIT Madras Research Park, Chennai',
+    status: 'AWAITING_APPROVED_OD_DOCUMENT',
+    documents: [],
+    affectedSessions: [
+      {
+        id: 'sess-03',
+        requestId: 'req-od-01',
+        attendanceId: 'att-201',
+        courseId: 'crs-cns',
+        courseCode: '34421109',
+        courseName: 'Cryptography and Network Security',
+        sessionDate: '2026-09-16',
+        periodNumber: 1,
+        timeRange: '09:00 AM – 09:50 AM',
+        facultyId: 'usr-fac-hcl',
+        facultyName: 'HCL Trainer',
+        originalStatus: 'ABSENT',
+        classTeacherApproved: false,
+        facultyStatus: 'PENDING'
+      }
+    ],
+    submittedAt: '2026-09-15T09:00:00Z',
+    createdAt: '2026-09-15T09:00:00Z',
+    updatedAt: '2026-09-15T09:00:00Z'
+  }
+];
+
+export const mockSmsNotifications: any[] = [
+  {
+    id: 'sms-notif-01',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    parentId: 'usr-parent-1',
+    parentName: 'Raveendra Sharma',
+    attendanceId: 'att-101',
+    phoneNumberMasked: '+91 98401 XXX51',
+    phoneNumber: '+91 98401 23451',
+    notificationType: 'ABSENCE',
+    message: 'EduTrack Attendance Alert: Your ward, Aarav Sharma, was marked ABSENT for Operating System Theory and Practical on 21 Sep 2026 (Period 5). Automated institutional notification.',
+    providerMessageId: 'MSG-FAST2SMS-992810',
+    deliveryStatus: 'DELIVERED',
+    createdAt: '2026-09-21T13:45:00Z',
+    sentAt: '2026-09-21T13:45:05Z'
+  },
+  {
+    id: 'sms-notif-02',
+    studentId: 'usr-stu-3',
+    studentName: 'Rohan Iyer',
+    parentId: 'usr-parent-3',
+    parentName: 'Subramanian Iyer',
+    attendanceId: 'att-301',
+    phoneNumberMasked: '+91 98401 XXX53',
+    phoneNumber: '+91 98401 23453',
+    notificationType: 'ABSENCE',
+    message: 'EduTrack Attendance Alert: Your ward, Rohan Iyer, was marked ABSENT for Software Engineering on 22 Sep 2026 (Period 4). Automated institutional notification.',
+    providerMessageId: 'MSG-FAST2SMS-992812',
+    deliveryStatus: 'DELIVERED',
+    createdAt: '2026-09-22T11:00:00Z',
+    sentAt: '2026-09-22T11:00:04Z'
+  }
+];
+
+export const mockExamAssessments: any[] = [
+  {
+    id: 'exam-cns-iat1',
+    courseId: 'crs-cns',
+    courseCode: '34421109',
+    courseTitle: 'Cryptography and Network Security',
+    academicClassId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    examType: 'IAT1',
+    title: 'Internal Assessment Test 1 (Units 1 & 2)',
+    maxMarks: 50,
+    examDate: '2026-08-28',
+    createdByFacultyId: 'usr-fac-hcl',
+    createdByFacultyName: 'HCL Trainer',
+    status: 'PUBLISHED',
+    createdAt: '2026-08-25T10:00:00Z',
+    publishedAt: '2026-08-30T16:00:00Z'
+  },
+  {
+    id: 'exam-se-iat1',
+    courseId: 'crs-se',
+    courseCode: '35021C13',
+    courseTitle: 'Software Engineering',
+    academicClassId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    examType: 'IAT1',
+    title: 'Internal Assessment Test 1 (Software Lifecycles & Agile)',
+    maxMarks: 50,
+    examDate: '2026-08-29',
+    createdByFacultyId: 'usr-fac-sarika',
+    createdByFacultyName: 'Dr. N. Sarika',
+    status: 'PUBLISHED',
+    createdAt: '2026-08-25T11:00:00Z',
+    publishedAt: '2026-08-30T17:00:00Z'
+  },
+  {
+    id: 'exam-se-iat2',
+    courseId: 'crs-se',
+    courseCode: '35021C13',
+    courseTitle: 'Software Engineering',
+    academicClassId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    examType: 'IAT2',
+    title: 'Internal Assessment Test 2 (Design Patterns & Testing)',
+    maxMarks: 50,
+    examDate: '2026-09-25',
+    createdByFacultyId: 'usr-fac-sarika',
+    createdByFacultyName: 'Dr. N. Sarika',
+    status: 'PUBLISHED',
+    createdAt: '2026-09-22T09:00:00Z',
+    publishedAt: '2026-09-28T12:00:00Z'
+  },
+  {
+    id: 'exam-os-iat1',
+    courseId: 'crs-os-tp',
+    courseCode: '35021C19',
+    courseTitle: 'Operating System Theory and Practical',
+    academicClassId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    examType: 'IAT1',
+    title: 'Internal Assessment Test 1 (Processes & Concurrency)',
+    maxMarks: 50,
+    examDate: '2026-08-30',
+    createdByFacultyId: 'usr-fac-gayathri',
+    createdByFacultyName: 'Mrs. Gayathri',
+    status: 'PUBLISHED',
+    createdAt: '2026-08-26T10:00:00Z',
+    publishedAt: '2026-09-02T15:00:00Z'
+  },
+  {
+    id: 'exam-os-model',
+    courseId: 'crs-os-tp',
+    courseCode: '35021C19',
+    courseTitle: 'Operating System Theory and Practical',
+    academicClassId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    examType: 'MODEL',
+    title: 'Model Examination (Comprehensive Syllabus)',
+    maxMarks: 100,
+    examDate: '2026-10-20',
+    createdByFacultyId: 'usr-fac-gayathri',
+    createdByFacultyName: 'Mrs. Gayathri',
+    status: 'DRAFT',
+    createdAt: '2026-09-29T11:00:00Z'
+  }
+];
+
+export const mockExamResults: any[] = [
+  // CNS IAT 1
+  {
+    id: 'res-cns-01',
+    assessmentId: 'exam-cns-iat1',
+    courseId: 'crs-cns',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    studentRegNumber: 'CS-2024-041',
+    marksObtained: 44,
+    maxMarks: 50,
+    percentage: 88,
+    resultStatus: 'PASS',
+    remarks: 'Outstanding conceptual clarity in symmetric key ciphers.',
+    enteredByFacultyId: 'usr-fac-hcl',
+    createdAt: '2026-08-30T15:30:00Z',
+    updatedAt: '2026-08-30T15:30:00Z'
+  },
+  {
+    id: 'res-cns-02',
+    assessmentId: 'exam-cns-iat1',
+    courseId: 'crs-cns',
+    studentId: 'usr-stu-2',
+    studentName: 'Diya Patel',
+    studentRegNumber: 'CS-2024-042',
+    marksObtained: 46,
+    maxMarks: 50,
+    percentage: 92,
+    resultStatus: 'PASS',
+    remarks: 'Exemplary work in RSA cryptanalysis.',
+    enteredByFacultyId: 'usr-fac-hcl',
+    createdAt: '2026-08-30T15:30:00Z',
+    updatedAt: '2026-08-30T15:30:00Z'
+  },
+  {
+    id: 'res-cns-03',
+    assessmentId: 'exam-cns-iat1',
+    courseId: 'crs-cns',
+    studentId: 'usr-stu-3',
+    studentName: 'Rohan Iyer',
+    studentRegNumber: 'CS-2024-043',
+    marksObtained: 39,
+    maxMarks: 50,
+    percentage: 78,
+    resultStatus: 'PASS',
+    remarks: 'Good effort; needs more practice in block cipher modes.',
+    enteredByFacultyId: 'usr-fac-hcl',
+    createdAt: '2026-08-30T15:30:00Z',
+    updatedAt: '2026-08-30T15:30:00Z'
+  },
+  // SE IAT 1
+  {
+    id: 'res-se-01',
+    assessmentId: 'exam-se-iat1',
+    courseId: 'crs-se',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    studentRegNumber: 'CS-2024-041',
+    marksObtained: 42,
+    maxMarks: 50,
+    percentage: 84,
+    resultStatus: 'PASS',
+    remarks: 'Clear understanding of Scrum and sprint backlog estimation.',
+    enteredByFacultyId: 'usr-fac-sarika',
+    createdAt: '2026-08-30T16:30:00Z',
+    updatedAt: '2026-08-30T16:30:00Z'
+  },
+  {
+    id: 'res-se-02',
+    assessmentId: 'exam-se-iat1',
+    courseId: 'crs-se',
+    studentId: 'usr-stu-2',
+    studentName: 'Diya Patel',
+    studentRegNumber: 'CS-2024-042',
+    marksObtained: 45,
+    maxMarks: 50,
+    percentage: 90,
+    resultStatus: 'PASS',
+    remarks: 'Well-structured software requirement specification (SRS).',
+    enteredByFacultyId: 'usr-fac-sarika',
+    createdAt: '2026-08-30T16:30:00Z',
+    updatedAt: '2026-08-30T16:30:00Z'
+  },
+  // SE IAT 2
+  {
+    id: 'res-se2-01',
+    assessmentId: 'exam-se-iat2',
+    courseId: 'crs-se',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    studentRegNumber: 'CS-2024-041',
+    marksObtained: 45,
+    maxMarks: 50,
+    percentage: 90,
+    resultStatus: 'PASS',
+    remarks: 'Consistent excellence in architectural design patterns.',
+    enteredByFacultyId: 'usr-fac-sarika',
+    createdAt: '2026-09-28T11:45:00Z',
+    updatedAt: '2026-09-28T11:45:00Z'
+  },
+  {
+    id: 'res-se2-02',
+    assessmentId: 'exam-se-iat2',
+    courseId: 'crs-se',
+    studentId: 'usr-stu-2',
+    studentName: 'Diya Patel',
+    studentRegNumber: 'CS-2024-042',
+    marksObtained: 47,
+    maxMarks: 50,
+    percentage: 94,
+    resultStatus: 'PASS',
+    remarks: 'Top score in unit test automation diagrams.',
+    enteredByFacultyId: 'usr-fac-sarika',
+    createdAt: '2026-09-28T11:45:00Z',
+    updatedAt: '2026-09-28T11:45:00Z'
+  },
+  // OS IAT 1
+  {
+    id: 'res-os-01',
+    assessmentId: 'exam-os-iat1',
+    courseId: 'crs-os-tp',
+    studentId: 'usr-stu-1',
+    studentName: 'Aarav Sharma',
+    studentRegNumber: 'CS-2024-041',
+    marksObtained: 41,
+    maxMarks: 50,
+    percentage: 82,
+    resultStatus: 'PASS',
+    remarks: 'Strong grasp of semaphore synchronization.',
+    enteredByFacultyId: 'usr-fac-gayathri',
+    createdAt: '2026-09-02T14:30:00Z',
+    updatedAt: '2026-09-02T14:30:00Z'
+  }
+];
+
+export const mockProfileChangeRequests: ProfileChangeRequest[] = [
+  {
+    id: 'pcr-stu-01',
+    userId: 'usr-stu-1',
+    userRole: 'STUDENT',
+    userName: 'Aarav Sharma',
+    userEmail: 'aarav.sharma@student.edutrack.edu',
+    requestType: 'PROFILE_INFORMATION_AND_IMAGE',
+    status: 'PENDING',
+    approvalLevel: 'CLASS_TEACHER',
+    classId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    classTeacherId: 'usr-fac-elankavi',
+    classTeacherName: 'Dr. R. Elankavi',
+    proposedChanges: [
+      {
+        fieldName: 'phone',
+        fieldLabel: 'Mobile Number',
+        oldValue: '+91 98401 11001',
+        newValue: '+91 98765 43210',
+        fieldType: 'PHONE'
+      },
+      {
+        fieldName: 'address',
+        fieldLabel: 'Residential Address',
+        oldValue: '42 Kasturba Nagar, Adyar, Chennai',
+        newValue: '18 Gandhi Road, T. Nagar, Chennai - 600017',
+        fieldType: 'TEXT'
+      }
+    ],
+    currentAvatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150&auto=format&fit=crop&q=80',
+    pendingAvatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    submittedAt: '2026-09-29T10:15:00Z'
+  },
+  {
+    id: 'pcr-parent-01',
+    userId: 'usr-parent-1',
+    userRole: 'PARENT',
+    userName: 'Raveendra Sharma',
+    userEmail: 'raveendra.sharma@edutrack.edu',
+    requestType: 'PROFILE_INFORMATION',
+    status: 'PENDING',
+    approvalLevel: 'CLASS_TEACHER',
+    childStudentId: 'usr-stu-1',
+    childStudentName: 'Aarav Sharma',
+    classId: 'cls-cse-4-vii-a',
+    className: 'B.Tech CSE — Semester IV (Section VII / VII-A)',
+    classTeacherId: 'usr-fac-elankavi',
+    classTeacherName: 'Dr. R. Elankavi',
+    proposedChanges: [
+      {
+        fieldName: 'phone',
+        fieldLabel: 'Primary Emergency Contact',
+        oldValue: '+91 98401 23451',
+        newValue: '+91 99401 98765',
+        fieldType: 'PHONE'
+      },
+      {
+        fieldName: 'address',
+        fieldLabel: 'Permanent Family Address',
+        oldValue: '12 Emerald Court, Chennai',
+        newValue: '88 Heritage Enclave, Anna Nagar West, Chennai - 600040',
+        fieldType: 'TEXT'
+      }
+    ],
+    submittedAt: '2026-09-29T11:30:00Z'
+  },
+  {
+    id: 'pcr-fac-01',
+    userId: 'usr-fac-sarika',
+    userRole: 'FACULTY',
+    userName: 'Dr. N. Sarika',
+    userEmail: 'sarika@edutrack.edu',
+    requestType: 'PROFILE_INFORMATION_AND_IMAGE',
+    status: 'PENDING',
+    approvalLevel: 'ADMIN',
+    proposedChanges: [
+      {
+        fieldName: 'phone',
+        fieldLabel: 'Faculty Contact Number',
+        oldValue: '+91 94440 12345',
+        newValue: '+91 98840 54321',
+        fieldType: 'PHONE'
+      },
+      {
+        fieldName: 'designation',
+        fieldLabel: 'Academic Designation',
+        oldValue: 'Associate Professor',
+        newValue: 'Professor & Head of Department',
+        fieldType: 'TEXT'
+      }
+    ],
+    currentAvatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    pendingAvatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    submittedAt: '2026-09-30T09:00:00Z'
+  }
+];
+
 

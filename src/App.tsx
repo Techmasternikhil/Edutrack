@@ -13,7 +13,14 @@ import {
   ParentReview,
   AcademicClass,
   RegistrationRequest,
-  FeeRecord
+  FeeRecord,
+  AttendanceRegularizationRequest,
+  SMSNotificationRecord,
+  ExamAssessment,
+  ExamResult,
+  ExamType,
+  AttendanceStatus,
+  ProfileChangeRequest
 } from './types';
 import {
   mockUsers,
@@ -28,7 +35,12 @@ import {
   mockParentReviews,
   mockAcademicClasses,
   mockRegistrationRequests,
-  mockFeeRecords
+  mockFeeRecords,
+  mockAttendanceRequests,
+  mockSmsNotifications,
+  mockExamAssessments,
+  mockExamResults,
+  mockProfileChangeRequests
 } from './data/mockData';
 import { Header } from './components/Header';
 import { UserProfileModal } from './components/UserProfileModal';
@@ -74,6 +86,11 @@ export function App() {
   const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
   const [parentReviews, setParentReviews] = useState<ParentReview[]>(mockParentReviews);
   const [fees, setFees] = useState<FeeRecord[]>(mockFeeRecords);
+  const [attendanceRequests, setAttendanceRequests] = useState<AttendanceRegularizationRequest[]>(mockAttendanceRequests);
+  const [smsNotifications, setSmsNotifications] = useState<SMSNotificationRecord[]>(mockSmsNotifications);
+  const [examAssessments, setExamAssessments] = useState<ExamAssessment[]>(mockExamAssessments);
+  const [examResults, setExamResults] = useState<ExamResult[]>(mockExamResults);
+  const [profileChangeRequests, setProfileChangeRequests] = useState<ProfileChangeRequest[]>(mockProfileChangeRequests);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleLogin = (user: User) => {
@@ -553,8 +570,13 @@ export function App() {
           fetch('/api/parent/reviews').then((r) => r.json()).catch(() => null),
           fetch('/api/academic-classes').then((r) => r.json()).catch(() => null),
           fetch('/api/admin/registration-requests').then((r) => r.json()).catch(() => null),
-          fetch('/api/fees').then((r) => r.json()).catch(() => null)
-        ]).then(([u, c, mats, asg, subs, qz, qa, att, notifs, revs, aClasses, regReqs, feeRecords]) => {
+          fetch('/api/fees').then((r) => r.json()).catch(() => null),
+          fetch('/api/attendance-requests').then((r) => r.json()).catch(() => null),
+          fetch('/api/notifications/sms').then((r) => r.json()).catch(() => null),
+          fetch('/api/exam-assessments').then((r) => r.json()).catch(() => null),
+          fetch('/api/exam-results').then((r) => r.json()).catch(() => null),
+          fetch('/api/admin/profile-change-requests').then((r) => r.json()).catch(() => null)
+        ]).then(([u, c, mats, asg, subs, qz, qa, att, notifs, revs, aClasses, regReqs, feeRecords, attReqs, smsNotifs, examAsmts, examRes, pcrList]) => {
           if (u && Array.isArray(u) && u.length > 0) {
             // Normalize any legacy/demo names to authentic Indian names
             const indianNameMap: Record<string, { name: string; email: string }> = {
@@ -611,6 +633,11 @@ export function App() {
           if (aClasses && Array.isArray(aClasses) && aClasses.length > 0) setAcademicClasses(aClasses);
           if (regReqs && Array.isArray(regReqs) && regReqs.length > 0) setRegistrationRequests(regReqs);
           if (feeRecords && Array.isArray(feeRecords) && feeRecords.length > 0) setFees(feeRecords);
+          if (attReqs && Array.isArray(attReqs) && attReqs.length > 0) setAttendanceRequests(attReqs);
+          if (smsNotifs && Array.isArray(smsNotifs) && smsNotifs.length > 0) setSmsNotifications(smsNotifs);
+          if (examAsmts && Array.isArray(examAsmts) && examAsmts.length > 0) setExamAssessments(examAsmts);
+          if (examRes && Array.isArray(examRes) && examRes.length > 0) setExamResults(examRes);
+          if (pcrList && Array.isArray(pcrList) && pcrList.length > 0) setProfileChangeRequests(pcrList);
         });
       })
       .catch((err) => console.log('Running in local mock store:', err));
@@ -974,7 +1001,426 @@ export function App() {
         userRole: currentUser?.role,
         performedBy: currentUser?.name
       })
-    }).catch((err) => console.log('Backend bulk attendance sync error:', err));
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        // If the server dispatched SMS notifications, append them to local state
+        if (data && data.smsDispatches && Array.isArray(data.smsDispatches)) {
+          setSmsNotifications((prev) => [...data.smsDispatches, ...prev]);
+        }
+      })
+      .catch((err) => console.log('Backend bulk attendance sync error:', err));
+  };
+
+  // Student submits attendance regularization request (Medical Certificate or OD)
+  const handleSubmitRegularizationRequest = async (formData: any) => {
+    try {
+      const payload = {
+        ...formData,
+        studentId: currentUser?.id,
+        studentName: currentUser?.name,
+        rollNumber: currentUser?.regNumber,
+        department: currentUser?.department,
+        classId: currentUser?.classId,
+        className: currentUser?.className
+      };
+
+      const res = await fetch('/api/attendance-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.request) {
+        setAttendanceRequests((prev) => [data.request, ...prev]);
+        setNotifications((prev) => [
+          {
+            id: `notif-${Date.now()}`,
+            title: 'Attendance Regularization Submitted',
+            message: `Your ${formData.type} regularization request has been routed to your Class Teacher.`,
+            type: 'SYSTEM',
+            createdAt: new Date().toISOString(),
+            isRead: false
+          },
+          ...prev
+        ]);
+      }
+    } catch (err) {
+      console.error('Error submitting regularization request:', err);
+    }
+  };
+
+  // Student uploads approved OD certificate after attending event
+  const handleUploadApprovedOD = async (requestId: string, file: File | null, fileName: string) => {
+    try {
+      const res = await fetch(`/api/attendance-requests/${requestId}/upload-approved-od`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: currentUser?.id,
+          certificateUrl: fileName || 'https://images.unsplash.com/photo-od-cert.jpg'
+        })
+      });
+      const data = await res.json();
+      if (data.request) {
+        setAttendanceRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? data.request : r))
+        );
+        setNotifications((prev) => [
+          {
+            id: `notif-${Date.now()}`,
+            title: 'Approved OD Uploaded',
+            message: 'Your signed OD certificate has been forwarded for Class Teacher and Subject Faculty clearance.',
+            type: 'SYSTEM',
+            createdAt: new Date().toISOString(),
+            isRead: false
+          },
+          ...prev
+        ]);
+      }
+    } catch (err) {
+      console.error('Error uploading approved OD:', err);
+    }
+  };
+
+  // Class Teacher reviews and endorses regularization request
+  const handleReviewRegularizationRequest = async (
+    requestId: string,
+    decision: 'APPROVE' | 'REJECT',
+    reason?: string,
+    sessionIds?: string[]
+  ) => {
+    try {
+      const res = await fetch(`/api/class-teacher/attendance-requests/${requestId}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacherId: currentUser?.id,
+          teacherName: currentUser?.name,
+          decision,
+          rejectionReason: reason,
+          approvedSessionIds: sessionIds
+        })
+      });
+      const data = await res.json();
+      if (data.request) {
+        setAttendanceRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? data.request : r))
+        );
+      }
+    } catch (err) {
+      console.error('Error reviewing regularization request:', err);
+    }
+  };
+
+  // Subject Faculty reviews an affected session adjustment
+  const handleFacultyDecisionAdjustment = async (
+    requestId: string,
+    sessionId: string,
+    decision: 'APPROVED' | 'REJECTED',
+    reason?: string
+  ) => {
+    try {
+      const res = await fetch(`/api/faculty/attendance-adjustments/${sessionId}/decision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          facultyId: currentUser?.id,
+          facultyName: currentUser?.name,
+          decision,
+          reason
+        })
+      });
+      const data = await res.json();
+      if (data.adjustment) {
+        // Update local requests
+        setAttendanceRequests((prev) =>
+          prev.map((req) => {
+            const hasSession = req.affectedSessions.some((s) => s.id === sessionId);
+            if (!hasSession) return req;
+            return {
+              ...req,
+              affectedSessions: req.affectedSessions.map((s) =>
+                s.id === sessionId
+                  ? { ...s, facultyDecision: decision, rejectionReason: reason, reviewedAt: new Date().toISOString() }
+                  : s
+              )
+            };
+          })
+        );
+        // Refresh attendance from server to update effectiveStatus & adjustments
+        fetch('/api/attendance')
+          .then((r) => r.json())
+          .then((att) => {
+            if (Array.isArray(att)) setAttendance(att);
+          })
+          .catch(() => null);
+      }
+    } catch (err) {
+      console.error('Error resolving faculty adjustment:', err);
+    }
+  };
+
+  // Faculty modifies historical attendance with mandatory reason & audit
+  const handleUpdateHistoricalAttendance = async (
+    attendanceId: string,
+    newStatus: AttendanceStatus,
+    reason: string
+  ) => {
+    try {
+      const res = await fetch(`/api/faculty/attendance/${attendanceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newStatus,
+          reason,
+          facultyId: currentUser?.id,
+          facultyName: currentUser?.name
+        })
+      });
+      const data = await res.json();
+      if (data.record) {
+        setAttendance((prev) =>
+          prev.map((a) => (a.id === attendanceId ? data.record : a))
+        );
+        // If an SMS was dispatched due to absent mark
+        if (data.smsDispatches && Array.isArray(data.smsDispatches)) {
+          setSmsNotifications((prev) => [...data.smsDispatches, ...prev]);
+        }
+      }
+    } catch (err) {
+      console.error('Error updating historical attendance:', err);
+    }
+  };
+
+  // Faculty creates Exam Assessment (IAT-1, IAT-2, Model)
+  const handleCreateExamAssessment = async (data: {
+    courseId: string;
+    courseCode: string;
+    examType: ExamType;
+    title: string;
+    maxMarks: number;
+    examDate: string;
+  }) => {
+    try {
+      const res = await fetch('/api/exam-assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...data,
+          facultyId: currentUser?.id
+        })
+      });
+      const newAssessment = await res.json();
+      if (newAssessment && newAssessment.id) {
+        setExamAssessments((prev) => [newAssessment, ...prev]);
+      }
+    } catch (err) {
+      console.error('Error creating exam assessment:', err);
+    }
+  };
+
+  // Faculty saves marks for an exam assessment
+  const handleSaveExamResults = async (
+    assessmentId: string,
+    results: { studentId: string; marksObtained: number; remarks?: string }[]
+  ) => {
+    try {
+      const res = await fetch(`/api/exam-assessments/${assessmentId}/results`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          facultyId: currentUser?.id,
+          results
+        })
+      });
+      const data = await res.json();
+      if (data.results && Array.isArray(data.results)) {
+        setExamResults((prev) => {
+          const filtered = prev.filter((r) => r.assessmentId !== assessmentId);
+          return [...filtered, ...data.results];
+        });
+      }
+    } catch (err) {
+      console.error('Error saving exam results:', err);
+    }
+  };
+
+  // Faculty publishes exam assessment
+  const handlePublishExamAssessment = async (assessmentId: string) => {
+    try {
+      const res = await fetch(`/api/exam-assessments/${assessmentId}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ facultyId: currentUser?.id })
+      });
+      const data = await res.json();
+      if (data.assessment) {
+        setExamAssessments((prev) =>
+          prev.map((a) => (a.id === assessmentId ? data.assessment : a))
+        );
+        // Refresh exam results
+        fetch('/api/exam-results')
+          .then((r) => r.json())
+          .then((rList) => {
+            if (Array.isArray(rList)) setExamResults(rList);
+          })
+          .catch(() => null);
+      }
+    } catch (err) {
+      console.error('Error publishing exam assessment:', err);
+    }
+  };
+
+  // Profile Change Request: Applicant submits updates
+  const handleSubmitProfileRequest = async (payload: {
+    changes: Record<string, any>;
+    pendingAvatarUrl?: string;
+    requestType?: string;
+  }) => {
+    try {
+      const res = await fetch('/api/profile/me/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser?.id,
+          userRole: currentUser?.role,
+          ...payload
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit profile request.');
+      }
+
+      if (data.request) {
+        setProfileChangeRequests((prev) => [data.request, ...prev]);
+        setNotifications((prev) => [
+          {
+            id: `notif-${Date.now()}`,
+            title: 'Profile Change Submitted',
+            message: `Your profile change request has been submitted for ${data.request.approvalLevel === 'CLASS_TEACHER' ? 'Class Teacher' : 'Administrative'} approval.`,
+            type: 'SYSTEM',
+            createdAt: new Date().toISOString(),
+            isRead: false
+          },
+          ...prev
+        ]);
+      } else if (data.user) {
+        // Admin direct edit
+        setCurrentUser(data.user);
+        setUsers((prev) => prev.map((u) => (u.id === data.user.id ? data.user : u)));
+      }
+    } catch (err: any) {
+      console.error('Error submitting profile request:', err);
+      throw err;
+    }
+  };
+
+  // Profile Change Request: Applicant cancels pending request
+  const handleCancelProfileRequest = async (requestId: string) => {
+    try {
+      const res = await fetch(`/api/profile/change-requests/${requestId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser?.id })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to cancel request.');
+      }
+
+      setProfileChangeRequests((prev) =>
+        prev.map((r) => (r.id === requestId ? { ...r, status: 'CANCELLED' } : r))
+      );
+    } catch (err: any) {
+      console.error('Error cancelling profile request:', err);
+      throw err;
+    }
+  };
+
+  // Approver: Class Teacher or Admin approves request (Atomic Update)
+  const handleApproveProfileRequest = async (requestId: string) => {
+    try {
+      const targetReq = profileChangeRequests.find((r) => r.id === requestId);
+      if (!targetReq) return;
+
+      const endpoint =
+        targetReq.approvalLevel === 'CLASS_TEACHER'
+          ? `/api/class-teacher/profile-change-requests/${requestId}/approve`
+          : `/api/admin/profile-change-requests/${requestId}/approve`;
+
+      const payload =
+        targetReq.approvalLevel === 'CLASS_TEACHER'
+          ? { teacherId: currentUser?.id, teacherName: currentUser?.name }
+          : { adminId: currentUser?.id, adminName: currentUser?.name };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to approve request.');
+      }
+
+      if (data.request) {
+        setProfileChangeRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? data.request : r))
+        );
+      }
+
+      if (data.updatedUser) {
+        // Update user in directory and session if it's the current user
+        setUsers((prev) =>
+          prev.map((u) => (u.id === data.updatedUser.id ? { ...u, ...data.updatedUser } : u))
+        );
+        if (currentUser && currentUser.id === data.updatedUser.id) {
+          setCurrentUser(data.updatedUser);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error approving profile request:', err);
+      throw err;
+    }
+  };
+
+  // Approver: Class Teacher or Admin rejects request
+  const handleRejectProfileRequest = async (requestId: string, reason: string) => {
+    try {
+      const targetReq = profileChangeRequests.find((r) => r.id === requestId);
+      if (!targetReq) return;
+
+      const endpoint =
+        targetReq.approvalLevel === 'CLASS_TEACHER'
+          ? `/api/class-teacher/profile-change-requests/${requestId}/reject`
+          : `/api/admin/profile-change-requests/${requestId}/reject`;
+
+      const payload =
+        targetReq.approvalLevel === 'CLASS_TEACHER'
+          ? { teacherId: currentUser?.id, teacherName: currentUser?.name, reason }
+          : { adminId: currentUser?.id, adminName: currentUser?.name, reason };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to reject request.');
+      }
+
+      if (data.request) {
+        setProfileChangeRequests((prev) =>
+          prev.map((r) => (r.id === requestId ? data.request : r))
+        );
+      }
+    } catch (err: any) {
+      console.error('Error rejecting profile request:', err);
+      throw err;
+    }
   };
 
   // Student submits assignment
@@ -1111,8 +1557,14 @@ export function App() {
             attendance={attendance}
             reviews={parentReviews}
             fees={fees}
+            examAssessments={examAssessments}
+            examResults={examResults}
+            smsNotifications={smsNotifications}
+            profileChangeRequests={profileChangeRequests}
             onPayFee={handlePayFee}
             onSubmitReview={handleParentSubmitReview}
+            onSubmitProfileRequest={handleSubmitProfileRequest}
+            onCancelProfileRequest={handleCancelProfileRequest}
           />
         )}
 
@@ -1127,9 +1579,17 @@ export function App() {
             quizAttempts={quizAttempts}
             attendance={attendance}
             fees={fees}
+            attendanceRequests={attendanceRequests}
+            examAssessments={examAssessments}
+            examResults={examResults}
+            profileChangeRequests={profileChangeRequests}
             onPayFee={handlePayFee}
             onSubmitAssignment={handleStudentSubmitAssignment}
             onSubmitQuiz={handleStudentSubmitQuiz}
+            onSubmitRegularizationRequest={handleSubmitRegularizationRequest}
+            onUploadApprovedOD={handleUploadApprovedOD}
+            onSubmitProfileRequest={handleSubmitProfileRequest}
+            onCancelProfileRequest={handleCancelProfileRequest}
           />
         )}
 
@@ -1147,6 +1607,10 @@ export function App() {
             students={users}
             registrationRequests={registrationRequests}
             fees={fees}
+            attendanceRequests={attendanceRequests}
+            examAssessments={examAssessments}
+            examResults={examResults}
+            profileChangeRequests={profileChangeRequests}
             onSendFeeReminder={handleSendFeeReminder}
             onConfirmRegistration={handleTeacherConfirmRegistration}
             onRejectRegistration={handleTeacherRejectRegistration}
@@ -1159,6 +1623,16 @@ export function App() {
             onSaveAssignment={handleSaveAssignment}
             onDeleteAssignment={handleDeleteAssignment}
             onSaveAttendance={handleSaveAttendance}
+            onReviewRegularizationRequest={handleReviewRegularizationRequest}
+            onFacultyDecisionAdjustment={handleFacultyDecisionAdjustment}
+            onUpdateHistoricalAttendance={handleUpdateHistoricalAttendance}
+            onCreateExamAssessment={handleCreateExamAssessment}
+            onSaveExamResults={handleSaveExamResults}
+            onPublishExamAssessment={handlePublishExamAssessment}
+            onApproveProfileRequest={handleApproveProfileRequest}
+            onRejectProfileRequest={handleRejectProfileRequest}
+            onSubmitProfileRequest={handleSubmitProfileRequest}
+            onCancelProfileRequest={handleCancelProfileRequest}
           />
         )}
 
@@ -1171,6 +1645,7 @@ export function App() {
             academicClasses={academicClasses}
             registrationRequests={registrationRequests}
             fees={fees}
+            profileChangeRequests={profileChangeRequests}
             onSendFeeReminder={handleSendFeeReminder}
             onCreateInvoice={handleCreateFeeInvoice}
             onApproveRegistration={handleAdminApproveRegistration}
@@ -1179,6 +1654,8 @@ export function App() {
             onCreateClass={handleAdminCreateClass}
             onApproveUser={handleApproveUser}
             onUpdateUser={handleAdminUpdateUser}
+            onApproveProfileRequest={handleApproveProfileRequest}
+            onRejectProfileRequest={handleRejectProfileRequest}
           />
         )}
       </div>

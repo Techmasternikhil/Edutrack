@@ -84,6 +84,26 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
           )}
 
+          {currentUser.phone && (
+            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-800/50 border border-slate-800">
+              <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div>
+                <div className="text-[10px] text-slate-400 font-medium">Contact Number</div>
+                <div className="text-slate-200">{currentUser.phone}</div>
+              </div>
+            </div>
+          )}
+
+          {currentUser.address && (
+            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-800/50 border border-slate-800">
+              <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+              <div>
+                <div className="text-[10px] text-slate-400 font-medium">Residential / Mailing Address</div>
+                <div className="text-slate-200">{currentUser.address}</div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-800/50 border border-slate-800">
             <Shield className="w-4 h-4 text-amber-400 shrink-0" />
             <div>
@@ -111,7 +131,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors cursor-pointer"
           >
-            Done
+            Close
           </button>
         </div>
       </div>

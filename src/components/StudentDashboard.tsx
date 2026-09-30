@@ -8,14 +8,21 @@ import {
   Quiz,
   QuizAttempt,
   AttendanceRecord,
+  AttendanceRegularizationRequest,
+  ExamAssessment,
+  ExamResult,
   FeeRecord,
-  PaymentMethod
+  PaymentMethod,
+  ProfileChangeRequest
 } from '../types';
 import { APP_CONFIG } from '../config/constants';
 import { calculateAttendanceMetrics } from '../utils/academic';
 import { YouTubeVideoPlayer } from './faculty/YouTubeVideoPlayer';
 import { StudentBillingSection } from './student/StudentBillingSection';
 import { StudentAttendanceSection } from './student/StudentAttendanceSection';
+import { StudentRegularizationSection } from './student/StudentRegularizationSection';
+import { StudentExamResultsSection } from './student/StudentExamResultsSection';
+import { ProfileManagementView } from './profile/ProfileManagementView';
 import {
   GraduationCap,
   Award,
@@ -31,7 +38,9 @@ import {
   Clock,
   Upload,
   Receipt,
-  CreditCard
+  CreditCard,
+  Building,
+  User as UserIcon
 } from 'lucide-react';
 
 interface StudentDashboardProps {
@@ -44,9 +53,17 @@ interface StudentDashboardProps {
   quizAttempts: QuizAttempt[];
   attendance: AttendanceRecord[];
   fees?: FeeRecord[];
+  attendanceRequests?: AttendanceRegularizationRequest[];
+  examAssessments?: ExamAssessment[];
+  examResults?: ExamResult[];
+  profileChangeRequests?: ProfileChangeRequest[];
   onSubmitAssignment: (assignmentId: string, assignmentTitle: string, courseCode: string, fileName: string) => void;
   onSubmitQuiz?: (quizId: string, answers: Record<string, number>, timeTaken: number) => void;
   onPayFee?: (feeId: string, paymentMethod: PaymentMethod, transactionRef: string) => void;
+  onSubmitRegularizationRequest?: (formData: any) => void;
+  onUploadApprovedOD?: (requestId: string, file: File | null, fileName: string) => void;
+  onSubmitProfileRequest?: (payload: { changes: Record<string, any>; pendingAvatarUrl?: string; requestType?: string }) => Promise<void>;
+  onCancelProfileRequest?: (requestId: string) => Promise<void>;
 }
 
 export const StudentDashboard: React.FC<StudentDashboardProps> = ({
@@ -59,14 +76,22 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   quizAttempts,
   attendance,
   fees = [],
+  attendanceRequests = [],
+  examAssessments = [],
+  examResults = [],
+  profileChangeRequests = [],
   onSubmitAssignment,
   onSubmitQuiz,
-  onPayFee
+  onPayFee,
+  onSubmitRegularizationRequest,
+  onUploadApprovedOD,
+  onSubmitProfileRequest,
+  onCancelProfileRequest
 }) => {
   const [selectedAsgId, setSelectedAsgId] = useState<string | null>(null);
   const [fileName, setFileName] = useState('');
 
-  // Active student tab: 'ALL' | 'VIDEOS' | 'MATERIALS' | 'ASSIGNMENTS' | 'QUIZZES' | 'ATTENDANCE'
+  // Active student tab: 'ALL' | 'VIDEOS' | 'MATERIALS' | 'ASSIGNMENTS' | 'QUIZZES' | 'ATTENDANCE' | 'REGULARIZATION' | 'RESULTS' | 'BILLING' | 'PROFILE'
   const [activeTab, setActiveTab] = useState<string>('ALL');
 
   // Video preview player state
@@ -80,6 +105,12 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   // Filter: enrolled subjects only
   const enrolledCourseIds = courses.map((c) => c.id);
   const enrolledCourseCodes = courses.map((c) => c.code);
+
+  // Pending profile change for this student
+  const myPendingProfileRequest = profileChangeRequests.find(
+    (r) => r.userId === currentStudent.id && r.status === 'PENDING'
+  ) || null;
+  const myProfileHistory = profileChangeRequests.filter((r) => r.userId === currentStudent.id);
 
   // Only published learning materials for enrolled courses
   const studentMaterials = materials.filter(
@@ -248,11 +279,14 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
           { id: 'ALL', label: 'All Learning Activity', icon: BookOpen },
           { id: 'SUBJECTS', label: 'My Subjects', icon: GraduationCap, badge: courses.length },
           { id: 'ATTENDANCE', label: 'My Attendance', icon: CalendarCheck, badge: !attendanceMetrics.isCompliant ? 1 : undefined },
+          { id: 'REGULARIZATION', label: 'Medical & OD Requests', icon: FileText, badge: attendanceRequests.filter((r) => r.studentId === currentStudent.id && r.status.includes('PENDING')).length },
+          { id: 'RESULTS', label: 'Internal Exam Results', icon: Award, badge: examAssessments.filter((a) => a.status === 'PUBLISHED').length },
           { id: 'VIDEOS', label: 'Teaching Videos', icon: Video, badge: studentVideos.length },
           { id: 'MATERIALS', label: 'Study Materials & Slides', icon: FileText, badge: studentDocs.length },
           { id: 'ASSIGNMENTS', label: 'Assignments', icon: FileCheck2 },
           { id: 'QUIZZES', label: 'Online Quizzes', icon: Award, badge: studentQuizzes.length },
-          { id: 'BILLING', label: 'Fees & Invoices', icon: Receipt, badge: myPendingFeesCount }
+          { id: 'BILLING', label: 'Fees & Invoices', icon: Receipt, badge: myPendingFeesCount },
+          { id: 'PROFILE', label: 'My Profile & Settings', icon: UserIcon, badge: myPendingProfileRequest ? 1 : undefined }
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -403,6 +437,37 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
         />
       )}
 
+      {/* Attendance Regularization (Medical & OD) Section */}
+      {activeTab === 'REGULARIZATION' && (
+        <StudentRegularizationSection
+          student={currentStudent}
+          courses={courses}
+          requests={attendanceRequests}
+          attendance={attendance}
+          onSubmitRequest={(data) => {
+            if (onSubmitRegularizationRequest) {
+              onSubmitRegularizationRequest(data);
+            }
+          }}
+          onUploadApprovedOD={(reqId, file, fName) => {
+            if (onUploadApprovedOD) {
+              onUploadApprovedOD(reqId, file, fName);
+            }
+          }}
+        />
+      )}
+
+      {/* Internal Exam Results (IAT 1, IAT 2, Model Exam) Section */}
+      {activeTab === 'RESULTS' && (
+        <StudentExamResultsSection
+          student={currentStudent}
+          courses={courses}
+          assessments={examAssessments}
+          results={examResults}
+          isParentView={false}
+        />
+      )}
+
       {/* Fees & Billing Section */}
       {activeTab === 'BILLING' && (
         <StudentBillingSection
@@ -415,6 +480,25 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
             }
           }}
           isParentView={false}
+        />
+      )}
+
+      {/* Profile & Settings Management Section */}
+      {activeTab === 'PROFILE' && (
+        <ProfileManagementView
+          currentUser={currentStudent}
+          pendingRequest={myPendingProfileRequest}
+          requestHistory={myProfileHistory}
+          onSubmitRequest={async (payload) => {
+            if (onSubmitProfileRequest) {
+              await onSubmitProfileRequest(payload);
+            }
+          }}
+          onCancelRequest={async (reqId) => {
+            if (onCancelProfileRequest) {
+              await onCancelProfileRequest(reqId);
+            }
+          }}
         />
       )}
 

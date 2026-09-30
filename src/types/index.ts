@@ -92,6 +92,51 @@ export interface User {
   designation?: string;
   academicYear?: string;
   isFacultyAdvisor?: boolean;
+  address?: string;
+  dateOfBirth?: string;
+  emergencyContact?: string;
+}
+
+export type ProfileChangeRequestType = 'PROFILE_INFORMATION' | 'PROFILE_IMAGE' | 'PROFILE_INFORMATION_AND_IMAGE';
+export type ProfileChangeStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type ProfileApprovalLevel = 'CLASS_TEACHER' | 'ADMIN';
+
+export interface ProfileChangeDetail {
+  fieldName: string;
+  fieldLabel: string;
+  oldValue: string;
+  newValue: string;
+  fieldType: 'TEXT' | 'PHONE' | 'EMAIL' | 'IMAGE' | 'DATE';
+}
+
+export interface ProfileChangeRequest {
+  id: string;
+  userId: string;
+  userRole: UserRole;
+  userName: string;
+  userEmail: string;
+  requestType: ProfileChangeRequestType;
+  status: ProfileChangeStatus;
+  approvalLevel: ProfileApprovalLevel;
+  // Routing context
+  classId?: string;
+  className?: string;
+  classTeacherId?: string;
+  classTeacherName?: string;
+  childStudentId?: string;
+  childStudentName?: string;
+  // Proposed Changes
+  proposedChanges: ProfileChangeDetail[];
+  currentAvatarUrl?: string;
+  pendingAvatarUrl?: string;
+  // Audit / Resolution
+  submittedAt: string;
+  reviewedBy?: string;
+  reviewerId?: string;
+  reviewerRole?: UserRole | 'CLASS_TEACHER';
+  reviewedAt?: string;
+  rejectionReason?: string;
+  updatedAt?: string;
 }
 
 export interface CourseFacultyAssignment {
@@ -227,6 +272,20 @@ export interface QuizAttempt {
 }
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE';
+export type AttendanceAdjustmentType = 'MEDICAL' | 'OD' | 'MANUAL_CORRECTION' | 'ADMIN_CORRECTION';
+
+export interface AttendanceAdjustment {
+  id: string;
+  attendanceId: string;
+  requestId?: string;
+  adjustmentType: AttendanceAdjustmentType;
+  originalStatus: AttendanceStatus;
+  effectiveStatus: AttendanceStatus;
+  approvedBy: string;
+  approvedAt: string;
+  reason: string;
+  createdAt: string;
+}
 
 export interface AttendanceRecord {
   id: string;
@@ -237,6 +296,147 @@ export interface AttendanceRecord {
   studentName?: string;
   date: string;
   status: AttendanceStatus;
+  period?: number;
+  timeRange?: string;
+  adjustments?: AttendanceAdjustment[];
+  effectiveStatus?: AttendanceStatus;
+}
+
+export type RegularizationRequestType = 'MEDICAL' | 'OD';
+export type RegularizationStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'AWAITING_APPROVED_OD_DOCUMENT'
+  | 'DOCUMENT_UPLOADED'
+  | 'PENDING_CLASS_TEACHER_REVIEW'
+  | 'REJECTED_BY_CLASS_TEACHER'
+  | 'CLASS_TEACHER_APPROVED'
+  | 'FORWARDED_TO_SUBJECT_FACULTY'
+  | 'PARTIALLY_APPROVED'
+  | 'APPROVED'
+  | 'REJECTED_BY_FACULTY'
+  | 'ATTENDANCE_ADJUSTED';
+
+export type RequestDocumentType = 'MEDICAL_CERTIFICATE' | 'OD_SUPPORTING_DOCUMENT' | 'APPROVED_OD' | 'OTHER';
+
+export interface RequestDocument {
+  id: string;
+  requestId: string;
+  documentType: RequestDocumentType;
+  fileUrl: string;
+  fileName: string;
+  mimeType?: string;
+  fileSize?: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+export interface AffectedSession {
+  id: string;
+  requestId: string;
+  attendanceId?: string;
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  sessionDate: string;
+  periodNumber?: number;
+  timeRange?: string;
+  facultyId: string;
+  facultyName: string;
+  originalStatus: AttendanceStatus;
+  classTeacherApproved: boolean;
+  facultyStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  facultyReviewedBy?: string;
+  facultyReviewedAt?: string;
+  facultyReason?: string;
+}
+
+export interface AttendanceRegularizationRequest {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentRegNumber: string;
+  classId: string;
+  className: string;
+  classTeacherId: string;
+  classTeacherName: string;
+  requestType: RegularizationRequestType;
+  fromDate: string;
+  toDate: string;
+  reason: string;
+  optionalNote?: string;
+  // OD specific fields
+  eventName?: string;
+  eventType?: 'Academic' | 'Technical Event' | 'Sports' | 'Cultural' | 'Competition' | 'Workshop' | 'Conference' | 'Institutional Duty' | 'Other';
+  eventVenue?: string;
+  status: RegularizationStatus;
+  documents: RequestDocument[];
+  affectedSessions: AffectedSession[];
+  classTeacherReviewedAt?: string;
+  classTeacherDecision?: 'APPROVED' | 'REJECTED';
+  classTeacherReason?: string;
+  submittedAt: string;
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SMSDeliveryStatus = 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED';
+
+export interface SMSNotificationRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  parentId: string;
+  parentName: string;
+  attendanceId: string;
+  phoneNumberMasked: string;
+  phoneNumber?: string;
+  notificationType: 'ABSENCE' | 'REGULARIZATION' | 'EXAM_RESULT' | 'GENERAL';
+  message: string;
+  providerMessageId?: string;
+  deliveryStatus: SMSDeliveryStatus;
+  createdAt: string;
+  sentAt?: string;
+  failureReason?: string;
+  retryCount?: number;
+}
+
+export type ExamType = 'IAT1' | 'IAT2' | 'MODEL';
+
+export interface ExamAssessment {
+  id: string;
+  courseId: string;
+  courseCode: string;
+  courseTitle: string;
+  academicClassId: string;
+  className: string;
+  examType: ExamType;
+  title: string;
+  maxMarks: number;
+  examDate: string;
+  createdByFacultyId: string;
+  createdByFacultyName: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'LOCKED';
+  createdAt: string;
+  publishedAt?: string;
+}
+
+export interface ExamResult {
+  id: string;
+  assessmentId: string;
+  courseId: string;
+  studentId: string;
+  studentName: string;
+  studentRegNumber: string;
+  marksObtained: number;
+  maxMarks: number;
+  percentage: number;
+  resultStatus: 'PASS' | 'FAIL' | 'ABSENT' | 'WITHHELD';
+  remarks?: string;
+  enteredByFacultyId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface NotificationItem {

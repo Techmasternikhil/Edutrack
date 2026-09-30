@@ -254,6 +254,196 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 16. SMS NOTIFICATIONS TABLE (Parent Absence SMS delivery tracking with idempotency)
+CREATE TABLE sms_notifications (
+    sms_notification_id VARCHAR2(50) PRIMARY KEY,
+    student_id VARCHAR2(50) REFERENCES students(student_id) ON DELETE CASCADE,
+    parent_id VARCHAR2(50) REFERENCES users(user_id) ON DELETE CASCADE,
+    attendance_id VARCHAR2(50) REFERENCES attendance(attendance_id) ON DELETE CASCADE,
+    phone_number_masked VARCHAR2(30) NOT NULL,
+    notification_type VARCHAR2(30) DEFAULT 'ABSENCE' CHECK (notification_type IN ('ABSENCE', 'REGULARIZATION', 'EXAM_RESULT', 'GENERAL')),
+    message CLOB NOT NULL,
+    provider_message_id VARCHAR2(100),
+    delivery_status VARCHAR2(20) DEFAULT 'SENT' CHECK (delivery_status IN ('QUEUED', 'SENT', 'DELIVERED', 'FAILED')),
+    failure_reason VARCHAR2(500),
+    retry_count NUMBER(2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_sms_att_parent_type UNIQUE (attendance_id, parent_id, notification_type)
+);
+
+CREATE INDEX idx_sms_student ON sms_notifications(student_id);
+CREATE INDEX idx_sms_parent ON sms_notifications(parent_id);
+CREATE INDEX idx_sms_status ON sms_notifications(delivery_status);
+
+-- 17. ATTENDANCE REGULARIZATION REQUESTS (Medical & OD Workflows)
+CREATE TABLE attendance_regularization_requests (
+    request_id VARCHAR2(50) PRIMARY KEY,
+    student_id VARCHAR2(50) REFERENCES students(student_id) ON DELETE CASCADE,
+    class_id VARCHAR2(50) REFERENCES academic_classes(class_id),
+    class_teacher_id VARCHAR2(50) REFERENCES faculty(faculty_id),
+    request_type VARCHAR2(20) CHECK (request_type IN ('MEDICAL', 'OD')),
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    reason CLOB NOT NULL,
+    optional_note CLOB,
+    event_name VARCHAR2(200),
+    event_type VARCHAR2(50),
+    event_venue VARCHAR2(200),
+    status VARCHAR2(40) DEFAULT 'SUBMITTED' CHECK (status IN (
+        'DRAFT', 'SUBMITTED', 'AWAITING_APPROVED_OD_DOCUMENT', 'DOCUMENT_UPLOADED',
+        'PENDING_CLASS_TEACHER_REVIEW', 'REJECTED_BY_CLASS_TEACHER', 'CLASS_TEACHER_APPROVED',
+        'FORWARDED_TO_SUBJECT_FACULTY', 'PARTIALLY_APPROVED', 'APPROVED', 'REJECTED_BY_FACULTY', 'ATTENDANCE_ADJUSTED'
+    )),
+    class_teacher_decision VARCHAR2(20) CHECK (class_teacher_decision IN ('APPROVED', 'REJECTED')),
+    class_teacher_reason CLOB,
+    class_teacher_reviewed_at TIMESTAMP,
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_reg_req_student ON attendance_regularization_requests(student_id);
+CREATE INDEX idx_reg_req_teacher ON attendance_regularization_requests(class_teacher_id);
+CREATE INDEX idx_reg_req_status ON attendance_regularization_requests(status);
+
+-- 18. ATTENDANCE REQUEST DOCUMENTS (Medical certificates & OD proofs)
+CREATE TABLE attendance_request_documents (
+    document_id VARCHAR2(50) PRIMARY KEY,
+    request_id VARCHAR2(50) REFERENCES attendance_regularization_requests(request_id) ON DELETE CASCADE,
+    document_type VARCHAR2(40) CHECK (document_type IN ('MEDICAL_CERTIFICATE', 'OD_SUPPORTING_DOCUMENT', 'APPROVED_OD', 'OTHER')),
+    file_url VARCHAR2(1000) NOT NULL,
+    file_name VARCHAR2(255) NOT NULL,
+    mime_type VARCHAR2(100),
+    file_size VARCHAR2(50),
+    uploaded_by VARCHAR2(50) REFERENCES users(user_id),
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 19. ATTENDANCE REQUEST SESSIONS (Timetable detected affected sessions routed to subject faculty)
+CREATE TABLE attendance_request_sessions (
+    request_session_id VARCHAR2(50) PRIMARY KEY,
+    request_id VARCHAR2(50) REFERENCES attendance_regularization_requests(request_id) ON DELETE CASCADE,
+    attendance_id VARCHAR2(50) REFERENCES attendance(attendance_id),
+    course_id VARCHAR2(50) REFERENCES courses(course_id),
+    session_date DATE NOT NULL,
+    period_number NUMBER(2),
+    faculty_id VARCHAR2(50) REFERENCES faculty(faculty_id),
+    class_teacher_approved NUMBER(1) DEFAULT 1,
+    faculty_status VARCHAR2(20) DEFAULT 'PENDING' CHECK (faculty_status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    faculty_reviewed_by VARCHAR2(100),
+    faculty_reviewed_at TIMESTAMP,
+    faculty_reason CLOB
+);
+
+-- 20. ATTENDANCE ADJUSTMENTS TABLE (Audit preserved regularized status without erasing original)
+CREATE TABLE attendance_adjustments (
+    adjustment_id VARCHAR2(50) PRIMARY KEY,
+    attendance_id VARCHAR2(50) REFERENCES attendance(attendance_id) ON DELETE CASCADE,
+    request_id VARCHAR2(50) REFERENCES attendance_regularization_requests(request_id),
+    adjustment_type VARCHAR2(30) CHECK (adjustment_type IN ('MEDICAL', 'OD', 'MANUAL_CORRECTION', 'ADMIN_CORRECTION')),
+    original_status VARCHAR2(10) CHECK (original_status IN ('PRESENT', 'ABSENT', 'LATE')),
+    effective_status VARCHAR2(10) CHECK (effective_status IN ('PRESENT', 'ABSENT', 'LATE')),
+    approved_by VARCHAR2(100) NOT NULL,
+    approved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reason CLOB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_adj_att_req_type UNIQUE (attendance_id, request_id, adjustment_type)
+);
+
+CREATE INDEX idx_adj_attendance ON attendance_adjustments(attendance_id);
+
+-- 21. EXAM ASSESSMENTS TABLE (IAT 1, IAT 2, Model Exam assessments)
+CREATE TABLE exam_assessments (
+    assessment_id VARCHAR2(50) PRIMARY KEY,
+    course_id VARCHAR2(50) REFERENCES courses(course_id) ON DELETE CASCADE,
+    academic_class_id VARCHAR2(50) REFERENCES academic_classes(class_id),
+    exam_type VARCHAR2(20) CHECK (exam_type IN ('IAT1', 'IAT2', 'MODEL')),
+    title VARCHAR2(200) NOT NULL,
+    max_marks NUMBER(5,2) NOT NULL,
+    exam_date DATE NOT NULL,
+    created_by VARCHAR2(50) REFERENCES faculty(faculty_id),
+    status VARCHAR2(20) DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'PUBLISHED', 'LOCKED')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    published_at TIMESTAMP
+);
+
+CREATE INDEX idx_exam_course_type ON exam_assessments(course_id, exam_type);
+
+-- 22. EXAM RESULTS TABLE (Subject-specific marks for enrolled students)
+CREATE TABLE exam_results (
+    result_id VARCHAR2(50) PRIMARY KEY,
+    assessment_id VARCHAR2(50) REFERENCES exam_assessments(assessment_id) ON DELETE CASCADE,
+    course_id VARCHAR2(50) REFERENCES courses(course_id),
+    student_id VARCHAR2(50) REFERENCES students(student_id) ON DELETE CASCADE,
+    marks_obtained NUMBER(5,2) NOT NULL,
+    max_marks NUMBER(5,2) NOT NULL,
+    percentage NUMBER(5,2) NOT NULL,
+    result_status VARCHAR2(20) DEFAULT 'PASS' CHECK (result_status IN ('PASS', 'FAIL', 'ABSENT', 'WITHHELD')),
+    remarks VARCHAR2(300),
+    entered_by VARCHAR2(50) REFERENCES faculty(faculty_id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_exam_result_student UNIQUE (assessment_id, student_id)
+);
+
+CREATE INDEX idx_res_assessment ON exam_results(assessment_id);
+CREATE INDEX idx_res_student ON exam_results(student_id);
+
+-- 23. PROFILE CHANGE REQUESTS TABLE
+CREATE TABLE profile_change_requests (
+    request_id VARCHAR2(50) PRIMARY KEY,
+    user_id VARCHAR2(50) REFERENCES users(user_id) ON DELETE CASCADE,
+    user_role VARCHAR2(20) CHECK (user_role IN ('STUDENT', 'PARENT', 'FACULTY')),
+    request_type VARCHAR2(35) CHECK (request_type IN ('PROFILE_INFORMATION', 'PROFILE_IMAGE', 'PROFILE_INFORMATION_AND_IMAGE')),
+    status VARCHAR2(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED')),
+    approval_level VARCHAR2(20) CHECK (approval_level IN ('CLASS_TEACHER', 'ADMIN')),
+    class_id VARCHAR2(50) REFERENCES academic_classes(class_id),
+    class_teacher_id VARCHAR2(50) REFERENCES faculty(faculty_id),
+    child_student_id VARCHAR2(50) REFERENCES students(student_id),
+    current_avatar_url VARCHAR2(500),
+    pending_avatar_url VARCHAR2(500),
+    submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    reviewed_by VARCHAR2(100),
+    reviewer_id VARCHAR2(50) REFERENCES users(user_id),
+    reviewer_role VARCHAR2(20),
+    reviewed_at TIMESTAMP,
+    rejection_reason CLOB,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_pcr_user_status ON profile_change_requests(user_id, status);
+CREATE INDEX idx_pcr_teacher_status ON profile_change_requests(class_teacher_id, status);
+
+-- 24. PROFILE CHANGE DETAILS TABLE
+CREATE TABLE profile_change_details (
+    change_id VARCHAR2(50) PRIMARY KEY,
+    request_id VARCHAR2(50) REFERENCES profile_change_requests(request_id) ON DELETE CASCADE,
+    field_name VARCHAR2(50) NOT NULL,
+    field_label VARCHAR2(100) NOT NULL,
+    old_value CLOB,
+    new_value CLOB,
+    field_type VARCHAR2(20) CHECK (field_type IN ('TEXT', 'PHONE', 'EMAIL', 'IMAGE', 'DATE')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_pcd_request ON profile_change_details(request_id);
+
+-- 25. PROFILE IMAGE CHANGES AUDIT TABLE
+CREATE TABLE profile_image_changes (
+    image_change_id VARCHAR2(50) PRIMARY KEY,
+    request_id VARCHAR2(50) REFERENCES profile_change_requests(request_id) ON DELETE CASCADE,
+    user_id VARCHAR2(50) REFERENCES users(user_id) ON DELETE CASCADE,
+    current_image_ref VARCHAR2(500),
+    pending_image_ref VARCHAR2(500) NOT NULL,
+    status VARCHAR2(20) DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED')),
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    activated_at TIMESTAMP
+);
+
+CREATE INDEX idx_pic_user ON profile_image_changes(user_id, status);
+
 -- SEED DATA
 INSERT INTO users (user_id, name, email, password_hash, role, department) 
 VALUES ('usr-admin-1', 'Dr. Rajesh Verma', 'admin@edutrack.edu', '$2a$10$e8K71jL1...', 'ADMIN', 'University Administration');

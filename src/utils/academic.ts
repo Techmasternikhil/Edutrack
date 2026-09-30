@@ -5,8 +5,12 @@ export interface AttendanceSummary {
   presentCount: number;
   lateCount: number;
   absentCount: number;
+  medicalAdjustedCount: number;
+  odAdjustedCount: number;
+  effectivePresentCount: number;
   totalRecords: number;
   attendanceRate: number;
+  effectiveAttendanceRate: number;
   isCompliant: boolean;
   statusLabel: 'COMPLIANT' | 'WARNING';
   shortageCount: number; // Number of additional consecutive classes to attend to reach statutory threshold
@@ -20,8 +24,12 @@ export interface SubjectAttendanceMetric {
   presentCount: number;
   lateCount: number;
   absentCount: number;
+  medicalAdjustedCount: number;
+  odAdjustedCount: number;
+  effectivePresentCount: number;
   totalRecords: number;
   attendanceRate: number;
+  effectiveAttendanceRate: number;
   isCompliant: boolean;
   statusLabel: 'COMPLIANT' | 'WARNING';
   shortageCount: number;
@@ -37,7 +45,7 @@ export interface CompleteAttendanceProfile {
 
 /**
  * Calculates academic attendance metrics and compliance based on configured thresholds.
- * Formula: Attendance % = Math.round((presentCount / totalRecords) * 100)
+ * Preserves the original faculty-marked status while calculating the regularized effective status.
  */
 export function calculateAttendanceMetrics(records: AttendanceRecord[]): AttendanceSummary {
   const totalRecords = records.length;
@@ -46,26 +54,59 @@ export function calculateAttendanceMetrics(records: AttendanceRecord[]): Attenda
       presentCount: 0,
       lateCount: 0,
       absentCount: 0,
+      medicalAdjustedCount: 0,
+      odAdjustedCount: 0,
+      effectivePresentCount: 0,
       totalRecords: 0,
       attendanceRate: 100,
+      effectiveAttendanceRate: 100,
       isCompliant: true,
       statusLabel: 'COMPLIANT',
       shortageCount: 0
     };
   }
 
-  const presentCount = records.filter((r) => r.status === 'PRESENT').length;
-  const lateCount = records.filter((r) => r.status === 'LATE').length;
-  const absentCount = records.filter((r) => r.status === 'ABSENT').length;
-  const attendanceRate = Math.round((presentCount / totalRecords) * 100);
-  const isCompliant = attendanceRate >= APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD;
+  let presentCount = 0;
+  let lateCount = 0;
+  let absentCount = 0;
+  let medicalAdjustedCount = 0;
+  let odAdjustedCount = 0;
+  let effectivePresentCount = 0;
 
-  // Calculate classes needed to reach threshold:
-  // (present + x) / (total + x) >= 0.75  =>  present + x >= 0.75*total + 0.75*x
-  // 0.25*x >= 0.75*total - present  =>  x >= (3*total - 4*present)
+  records.forEach((r) => {
+    const original = r.status;
+    if (original === 'PRESENT') presentCount++;
+    else if (original === 'LATE') lateCount++;
+    else absentCount++;
+
+    // Determine effective status based on approved adjustments
+    let effective = r.effectiveStatus || original;
+    const activeAdjustment = r.adjustments && r.adjustments.length > 0 ? r.adjustments[r.adjustments.length - 1] : null;
+
+    if (activeAdjustment) {
+      if (activeAdjustment.adjustmentType === 'MEDICAL') {
+        medicalAdjustedCount++;
+        if (APP_CONFIG.MEDICAL_COUNTS_AS_ATTENDANCE) effective = 'PRESENT';
+      } else if (activeAdjustment.adjustmentType === 'OD') {
+        odAdjustedCount++;
+        if (APP_CONFIG.OD_COUNTS_AS_ATTENDANCE) effective = 'PRESENT';
+      } else if (activeAdjustment.effectiveStatus) {
+        effective = activeAdjustment.effectiveStatus;
+      }
+    }
+
+    if (effective === 'PRESENT') {
+      effectivePresentCount++;
+    }
+  });
+
+  const attendanceRate = Math.round((presentCount / totalRecords) * 100);
+  const effectiveAttendanceRate = Math.round((effectivePresentCount / totalRecords) * 100);
+  const isCompliant = effectiveAttendanceRate >= APP_CONFIG.ATTENDANCE_STATUTORY_THRESHOLD;
+
   let shortageCount = 0;
   if (!isCompliant) {
-    const needed = Math.ceil((3 * totalRecords - 4 * presentCount));
+    const needed = Math.ceil((3 * totalRecords - 4 * effectivePresentCount));
     shortageCount = needed > 0 ? needed : 1;
   }
 
@@ -73,8 +114,12 @@ export function calculateAttendanceMetrics(records: AttendanceRecord[]): Attenda
     presentCount,
     lateCount,
     absentCount,
+    medicalAdjustedCount,
+    odAdjustedCount,
+    effectivePresentCount,
     totalRecords,
     attendanceRate,
+    effectiveAttendanceRate,
     isCompliant,
     statusLabel: isCompliant ? 'COMPLIANT' : 'WARNING',
     shortageCount
@@ -100,8 +145,12 @@ export function calculateSubjectAttendanceMetrics(
       presentCount: summary.presentCount,
       lateCount: summary.lateCount,
       absentCount: summary.absentCount,
+      medicalAdjustedCount: summary.medicalAdjustedCount,
+      odAdjustedCount: summary.odAdjustedCount,
+      effectivePresentCount: summary.effectivePresentCount,
       totalRecords: summary.totalRecords,
       attendanceRate: summary.attendanceRate,
+      effectiveAttendanceRate: summary.effectiveAttendanceRate,
       isCompliant: summary.isCompliant,
       statusLabel: summary.statusLabel,
       shortageCount: summary.shortageCount,
